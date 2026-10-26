@@ -4,6 +4,8 @@ import health.caresync.clinical.domain.Appointment;
 import health.caresync.clinical.domain.AppointmentRepository;
 import health.caresync.clinical.dto.ClinicalNoteCreateRequest;
 import health.caresync.clinical.dto.ClinicalNoteResponse;
+import health.caresync.clinical.dto.ClinicalNoteSummary;
+import health.caresync.clinical.dto.SoapDataResponse;
 import health.caresync.clinical.notes.ClinicalNoteStore;
 import health.caresync.common.dto.Specialty;
 import health.caresync.common.exception.ForbiddenException;
@@ -11,7 +13,11 @@ import health.caresync.common.exception.NotFoundException;
 import health.caresync.common.exception.ValidationException;
 import health.caresync.common.security.CaresyncPrincipal;
 import health.caresync.common.tenant.TenantRlsContext;
+import health.caresync.common.web.PageResponse;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
@@ -96,27 +102,40 @@ public class ClinicalNoteService {
         String id = store.create(note);
         return new ClinicalNoteResponse(
             id, request.patientId(), request.providerId(), request.appointmentId(),
-            request.specialty(), request.noteType(), "DRAFT", createdAt
+            request.specialty(), request.noteType(), "DRAFT", createdAt,
+            new SoapDataResponse(
+                request.soapData().subjective(),
+                request.soapData().objective(),
+                request.soapData().assessment(),
+                request.soapData().plan()
+            )
         );
     }
 
     @Transactional(readOnly = true)
-    public ClinicalNoteResponse get(String id) {
+    public PageResponse<ClinicalNoteSummary> list(int page, int size, String search) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ValidationException("Page must be non-negative and size must be between 1 and 100");
+        }
         UUID tenantId = tenantRlsContext.apply();
         CaresyncPrincipal principal = currentPrincipal();
-        Map<String, Object> note = requireStore().findById(id);
-        if (note == null || !tenantId.toString().equals(note.get("tenant_id"))) {
-            throw new NotFoundException("Clinical note not found");
-        }
-        if (!"ADMIN".equals(principal.role())) {
-            if (!"PROVIDER".equals(principal.role())
-                || !principal.specialty().equals(note.get("specialty"))
-                || !providerBelongsToUser(tenantId, note.get("provider_id"), principal.userId())) {
-                throw new ForbiddenException("Clinical note is not available to this user");
-            }
-        }
+        String query = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        List<ClinicalNoteSummary> matches = requireStore().findByTenantId(tenantId.toString()).stream()
+            .filter(note -> canAccess(note, tenantId, principal))
+            .filter(note -> matchesSearch(note, query))
+            .map(note -> toSummary((String) note.get("id"), note))
+            .sorted(Comparator.comparing(ClinicalNoteSummary::createdAt).reversed())
+            .toList();
+
+        long offset = (long) page * size;
+        int from = (int) Math.min(offset, matches.size());
+        int to = Math.min(from + size, matches.size());
+        return new PageResponse<>(matches.subList(from, to), page, size, matches.size());
+    }
+
+    private ClinicalNoteSummary toSummary(String id, Map<String, Object> note) {
         try {
-            return new ClinicalNoteResponse(
+            return new ClinicalNoteSummary(
                 id,
                 UUID.fromString((String) note.get("patient_id")),
                 UUID.fromString((String) note.get("provider_id")),
@@ -129,6 +148,82 @@ public class ClinicalNoteService {
         } catch (IllegalArgumentException | ClassCastException e) {
             throw new IllegalStateException("Stored clinical note has an invalid shape", e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ClinicalNoteResponse get(String id) {
+        UUID tenantId = tenantRlsContext.apply();
+        CaresyncPrincipal principal = currentPrincipal();
+        Map<String, Object> note = requireStore().findById(id);
+        if (note == null || !tenantId.toString().equals(note.get("tenant_id"))) {
+            throw new NotFoundException("Clinical note not found");
+        }
+        if (!canAccess(note, tenantId, principal)) {
+            throw new ForbiddenException("Clinical note is not available to this user");
+        }
+        return toResponse(id, note);
+    }
+
+    private ClinicalNoteResponse toResponse(String id, Map<String, Object> note) {
+        try {
+            return new ClinicalNoteResponse(
+                id,
+                UUID.fromString((String) note.get("patient_id")),
+                UUID.fromString((String) note.get("provider_id")),
+                UUID.fromString((String) note.get("appointment_id")),
+                Specialty.valueOf((String) note.get("specialty")),
+                (String) note.get("note_type"),
+                (String) note.get("status"),
+                Instant.parse((String) note.get("created_at")),
+                soapData(note.get("soap_data"))
+            );
+        } catch (IllegalArgumentException | ClassCastException e) {
+            throw new IllegalStateException("Stored clinical note has an invalid shape", e);
+        }
+    }
+
+    private boolean canAccess(Map<String, Object> note, UUID tenantId, CaresyncPrincipal principal) {
+        return "ADMIN".equals(principal.role())
+            || ("PROVIDER".equals(principal.role())
+                && principal.specialty() != null
+                && principal.specialty().equals(note.get("specialty"))
+                && providerBelongsToUser(tenantId, note.get("provider_id"), principal.userId()));
+    }
+
+    private boolean matchesSearch(Map<String, Object> note, String query) {
+        if (query.isEmpty()) {
+            return true;
+        }
+        return List.of("id", "patient_id", "provider_id", "appointment_id", "specialty", "note_type", "status")
+            .stream()
+            .map(note::get)
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
+            .anyMatch(value -> value.toLowerCase(Locale.ROOT).contains(query));
+    }
+
+    private SoapDataResponse soapData(Object value) {
+        if (!(value instanceof Map<?, ?> soap)) {
+            throw new IllegalStateException("Stored clinical note has invalid SOAP data");
+        }
+        try {
+            return new SoapDataResponse(
+                requiredString(soap, "subjective"),
+                requiredString(soap, "objective"),
+                requiredString(soap, "assessment"),
+                requiredString(soap, "plan")
+            );
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Stored clinical note has invalid SOAP data", e);
+        }
+    }
+
+    private String requiredString(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        if (!(value instanceof String text)) {
+            throw new IllegalArgumentException("Missing SOAP field: " + key);
+        }
+        return text;
     }
 
     private boolean providerBelongsToUser(UUID tenantId, Object providerId, String userId) {

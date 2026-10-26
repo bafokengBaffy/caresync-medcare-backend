@@ -7,11 +7,17 @@ import health.caresync.billing.domain.Payment;
 import health.caresync.billing.domain.PaymentRepository;
 import health.caresync.billing.dto.PaymentCreateRequest;
 import health.caresync.billing.dto.PaymentResponse;
+import health.caresync.billing.dto.PaymentMethod;
 import health.caresync.common.exception.NotFoundException;
 import health.caresync.common.exception.ValidationException;
 import health.caresync.common.tenant.TenantRlsContext;
+import health.caresync.common.web.PageResponse;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,7 +89,50 @@ public class PaymentService {
             payment.getAmountCents(),
             payment.getCurrency(),
             request.method(),
+            payment.getStatus(),
+            payment.getExternalRef(),
             payment.getPaidAt()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> list(int page, int size) {
+        validatePage(page, size);
+        UUID tenantId = tenantRlsContext.apply();
+        Page<Payment> result = payments.findAllByTenantId(
+            tenantId,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "paidAt"))
+        );
+        List<PaymentResponse> content = result.getContent().stream()
+            .map(this::toResponse)
+            .toList();
+        return new PageResponse<>(content, page, size, result.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse get(UUID id) {
+        UUID tenantId = tenantRlsContext.apply();
+        Payment payment = payments.findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new NotFoundException("Payment not found"));
+        return toResponse(payment);
+    }
+
+    private PaymentResponse toResponse(Payment payment) {
+        return new PaymentResponse(
+            payment.getId(),
+            payment.getInvoiceId(),
+            payment.getAmountCents(),
+            payment.getCurrency(),
+            PaymentMethod.valueOf(payment.getMethod()),
+            payment.getStatus(),
+            payment.getExternalRef(),
+            payment.getPaidAt()
+        );
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ValidationException("Page must be non-negative and size must be between 1 and 100");
+        }
     }
 }

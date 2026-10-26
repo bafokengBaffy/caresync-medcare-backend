@@ -1,11 +1,11 @@
 package health.caresync.patient.controller;
 import health.caresync.patient.dto.*;
 import health.caresync.patient.service.PatientService;
+import health.caresync.common.web.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
-import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController @RequestMapping("/api/v1/patients")
@@ -30,5 +30,11 @@ public class PatientController {
     }
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER')")
-    public List<PatientSummaryResponse> list() { return svc.list(); }
+    public PageResponse<PatientSummaryResponse> list(
+        @RequestParam(required = false) String q,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        return svc.list(q, page, size);
+    }
 }

@@ -9,6 +9,8 @@ public record PaymentResponse(
     long amountCents,
     String currency,
     PaymentMethod method,
+    String status,
+    String externalRef,
     Instant paidAt
 ) {
 }

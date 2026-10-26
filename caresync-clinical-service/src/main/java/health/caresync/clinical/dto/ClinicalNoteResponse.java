@@ -12,6 +12,7 @@ public record ClinicalNoteResponse(
     Specialty specialty,
     String noteType,
     String status,
-    Instant createdAt
+    Instant createdAt,
+    SoapDataResponse soapData
 ) {
 }
