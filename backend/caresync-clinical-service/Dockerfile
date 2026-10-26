@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM maven:3.9.16-eclipse-temurin-25 AS build
 WORKDIR /workspace
 COPY pom.xml .
 COPY caresync-common/pom.xml caresync-common/pom.xml
@@ -10,7 +10,7 @@ COPY caresync-common/src caresync-common/src
 COPY caresync-clinical-service/src caresync-clinical-service/src
 RUN mvn -B -pl caresync-clinical-service -am package -DskipTests
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /workspace/caresync-clinical-service/target/*.jar app.jar
 EXPOSE 10000

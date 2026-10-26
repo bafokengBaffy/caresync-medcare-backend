@@ -6,8 +6,12 @@ import health.caresync.patient.mapper.PatientMapper;
 import health.caresync.common.exception.NotFoundException;
 import health.caresync.common.exception.ValidationException;
 import health.caresync.common.tenant.TenantRlsContext;
+import health.caresync.common.web.PageResponse;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import java.util.UUID;
@@ -64,10 +68,19 @@ public class PatientService {
     }
 
     @Transactional(readOnly = true)
-    public List<PatientSummaryResponse> list() {
+    public PageResponse<PatientSummaryResponse> list(String query, int page, int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ValidationException("Page must be non-negative and size must be between 1 and 100");
+        }
         UUID tenantId = tenantRlsContext.apply();
-        return repo.findAllByTenantId(tenantId).stream()
+        Page<Patient> patients = repo.searchByTenantId(
+            tenantId,
+            query == null ? "" : query.trim(),
+            PageRequest.of(page, size, Sort.by("lastName").ascending().and(Sort.by("firstName").ascending()))
+        );
+        List<PatientSummaryResponse> content = patients.getContent().stream()
             .map(mapper::toSummary)
             .toList();
+        return new PageResponse<>(content, page, size, patients.getTotalElements());
     }
 }

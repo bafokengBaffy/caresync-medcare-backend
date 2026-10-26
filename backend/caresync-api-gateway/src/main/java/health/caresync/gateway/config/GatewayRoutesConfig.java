@@ -13,7 +13,12 @@ public class GatewayRoutesConfig {
         String billing  = serviceUri(env("BILLING_SERVICE_URL",  "http://localhost:8083"));
         return b.routes()
             .route("patients",  r -> r.path("/api/v1/patients/**", "/api/v1/providers/**").uri(patient))
-            .route("clinical",  r -> r.path("/api/v1/appointments/**", "/api/v1/notes/**", "/api/v1/availability/**").uri(clinical))
+            .route("clinical",  r -> r.path(
+                "/api/v1/appointments/**",
+                "/api/v1/notes",
+                "/api/v1/notes/**",
+                "/api/v1/availability/**"
+            ).uri(clinical))
             .route("billing",   r -> r.path("/api/v1/invoices/**", "/api/v1/payments/**").uri(billing))
             .build();
     }
