@@ -1,0 +1,134 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="deploy-pipeline" name="Deployment Pipeline">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareSync MedCare - Proposed Cloud CI/CD and Release Gates" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="1000" height="40" as="geometry" />
+        </mxCell>
+        <!-- Stage 1: Local Dev -->
+        <mxCell id="stage1" value="STAGE 1: LOCAL DEVELOPMENT (limited workstation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#0d47a1;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="70" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ide" value="VS Code: edit only&lt;br&gt;No local Docker, database, Redis, RabbitMQ or builds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="70" y="110" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="git-push" value="Push reviewed changes to a feature branch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="70" y="190" width="260" height="60" as="geometry" />
+        </mxCell>
+        <!-- Stage 2: GitHub Actions -->
+        <mxCell id="stage2" value="STAGE 2: GITHUB ACTIONS (cloud CI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="400" y="70" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="snyk" value="Snyk dependency/security scans on every pull request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="420" y="110" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="trivy" value="Trivy container and Dockerfile scans on every pull request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="420" y="190" width="260" height="60" as="geometry" />
+        </mxCell>
+        <!-- Stage 3: Test Suite -->
+        <mxCell id="stage3" value="STAGE 3: AUTOMATED TESTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#e65100;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="750" y="70" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="unit-tests" value="Run scoped unit/service tests in CI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe082;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="770" y="110" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tenant-tests" value="JUnit integration test for each new endpoint: Tenant A -&gt; Tenant B must return 403" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe082;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="770" y="190" width="260" height="60" as="geometry" />
+        </mxCell>
+        <!-- Stage 4: Cloud Builds -->
+        <mxCell id="stage4" value="STAGE 4: REMOTE BUILDS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#1b5e20;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="70" width="250" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="render-build" value="Render builds the proposed Spring Boot services remotely" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="110" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vercel-build" value="Vercel builds frontend and provides preview deployment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="190" width="210" height="60" as="geometry" />
+        </mxCell>
+        <!-- Stage 5: Deploy -->
+        <mxCell id="stage5" value="STAGE 5: PROTOTYPE DEPLOYMENT (test data only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c62828;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="320" width="600" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-render" value="Render: gateway, patient, clinical and billing services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="70" y="360" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-vercel" value="Vercel: React prototype frontend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="70" y="450" width="560" height="40" as="geometry" />
+        </mxCell>
+        <!-- Stage 6: Post-deploy -->
+        <mxCell id="stage6" value="STAGE 6: AUTHORIZED STAGING VALIDATION" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00695c;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="700" y="320" width="650" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="zap" value="OWASP ZAP nightly against authorized Render staging; track findings, fix and retest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b2dfdb;strokeColor=#00695c;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="360" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="smoke" value="Smoke, auth and tenant-isolation checks before accepting a build" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b2dfdb;strokeColor=#00695c;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="360" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="logs" value="Render CLI logs; do not place patient data or secrets in logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b2dfdb;strokeColor=#00695c;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="450" width="610" height="50" as="geometry" />
+        </mxCell>
+        <!-- Stage 7: Migration path -->
+        <mxCell id="stage7" value="STAGE 7: FUTURE PRODUCTION GATE (not automatic)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="560" width="1300" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="mig1" value="Approve scope and target architecture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="70" y="600" width="220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mig2" value="Verify provider BAAs, privacy and access controls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="330" y="600" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mig3" value="Implement reviewed Azure/GCP environment and migrations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="610" y="600" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mig4" value="Test isolation, security, performance and backup restore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="600" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mig5" value="Written CareSync go-live approval" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="600" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mig-note" value="All schema changes use reviewed Flyway/Liquibase migrations; no inline dashboard edits. Live data waits for privacy, security, backup/recovery and production-readiness approval." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontStyle=3;fontColor=#283593;" vertex="1" parent="1">
+          <mxGeometry x="70" y="650" width="1260" height="30" as="geometry" />
+        </mxCell>
+        <!-- Arrows between stages -->
+        <mxCell id="fa1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage1" target="stage2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fa2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage2" target="stage3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fa3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage3" target="stage4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fa4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage4" target="stage6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1225" y="300" />
+              <mxPoint x="1025" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fa5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage4" target="stage5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="270" />
+              <mxPoint x="380" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fa6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage5" target="stage7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fa7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="stage6" target="stage7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Hardware note -->
+        <mxCell id="hw-note" value="Prototype testing uses agreed synthetic/anonymized data only. Do not move real patient data until roles, privacy, security findings, backups, restore tests and launch approval are complete." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="740" width="900" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

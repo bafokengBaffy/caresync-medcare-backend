@@ -1,0 +1,99 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="tenant-isolation" name="Multi-Tenancy Isolation Model">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1400" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareSync MedCare - Tenant Isolation: Prototype and Future Production Target" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="800" height="40" as="geometry" />
+        </mxCell>
+        <!-- PROTOTYPE MODEL -->
+        <mxCell id="proto-zone" value="PROTOTYPE TARGET: Shared PostgreSQL schema + tenant_id + RLS (not yet proof of isolation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#0d47a1;fontStyle=1;fontSize=14;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="70" width="1300" height="280" as="geometry" />
+        </mxCell>
+        <!-- Shared DB box -->
+        <mxCell id="proto-db" value="Supabase PostgreSQL - one shared database/schema" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#bbdefb;strokeColor=#1565c0;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="120" width="600" height="60" as="geometry" />
+        </mxCell>
+        <!-- Tenant A schema -->
+        <mxCell id="tenantA" value="Tenant A Rows&#10;tenant_id = 'uuid-A'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="220" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="tenantA-rls" value="RLS target: tenant_id = current_setting('app.tenant_id')::uuid; deny missing context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a5d6a7;strokeColor=#2e7d32;fontSize=9;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="120" y="330" width="250" height="55" as="geometry" />
+        </mxCell>
+        <!-- Tenant B schema -->
+        <mxCell id="tenantB" value="Tenant B Rows&#10;tenant_id = 'uuid-B'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="220" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="tenantB-rls" value="Same policy per tenant-scoped table; context set by trusted backend per transaction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe082;strokeColor=#f57f17;fontSize=9;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="450" y="330" width="250" height="55" as="geometry" />
+        </mxCell>
+        <!-- Tenant C schema -->
+        <mxCell id="tenantC" value="Tenant C Rows&#10;tenant_id = 'uuid-C'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="220" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="tenantC-rls" value="RLS is defense in depth; test policies with the actual non-bypass application role" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef9a9a;strokeColor=#b85450;fontSize=9;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="780" y="330" width="250" height="55" as="geometry" />
+        </mxCell>
+        <!-- JWT flow -->
+        <mxCell id="jwt-flow" value="Verified JWT tenant_id" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#0d47a1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="185" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="jwt-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="proto-db" target="tenantB">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- BOLA double-check -->
+        <mxCell id="bola-check" value="BOLA checks: verify token; match route tenant; filter repository queries; enforce RLS. Test cross-tenant requests return 403." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="220" width="250" height="165" as="geometry" />
+        </mxCell>
+        <!-- PRODUCTION MODEL -->
+        <mxCell id="prod-zone" value="PROPOSED PRODUCTION TARGET: database per tenant in Azure SQL Elastic Pools" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#1b5e20;fontStyle=1;fontSize=14;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="400" width="1300" height="320" as="geometry" />
+        </mxCell>
+        <!-- Elastic pool -->
+        <mxCell id="elastic-pool" value="Azure SQL Elastic Pool - separate tenant databases share pool compute" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontStyle=1;fontSize=13;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="450" width="1200" height="240" as="geometry" />
+        </mxCell>
+        <!-- DB A -->
+        <mxCell id="db-A" value="Tenant A database&lt;br&gt;Configure encryption, access and backups; verify isolation" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#a5d6a7;strokeColor=#2e7d32;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="500" width="280" height="160" as="geometry" />
+        </mxCell>
+        <!-- DB B -->
+        <mxCell id="db-B" value="Tenant B database&lt;br&gt;Configure encryption, access and backups; verify isolation" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#a5d6a7;strokeColor=#2e7d32;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="500" width="280" height="160" as="geometry" />
+        </mxCell>
+        <!-- DB C -->
+        <mxCell id="db-C" value="Tenant C database&lt;br&gt;Configure encryption, access and backups; verify isolation" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#a5d6a7;strokeColor=#2e7d32;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="970" y="500" width="280" height="160" as="geometry" />
+        </mxCell>
+        <!-- Zero leakage guarantee -->
+        <mxCell id="zero-leak" value="Separate databases reduce shared-row exposure; routing, identity, configuration, backups and testing still matter. Operational risks remain." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1b5e20;strokeColor=#1b5e20;fontColor=#ffffff;fontSize=12;align=center;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="740" width="600" height="70" as="geometry" />
+        </mxCell>
+        <!-- Comparison table -->
+        <mxCell id="compare-title" value="ISOLATION COMPARISON - TARGET DESIGN, NOT COMPLIANCE ATTESTATION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="400" y="830" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="compare-table" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="200" y="870" width="1000" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="ch" value="Aspect | Prototype | Production target" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#e3f2fd;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=12;align=left;spacingLeft=5;fontStyle=1;" vertex="1" parent="compare-table">
+          <mxGeometry y="30" width="1000" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cr1" value="Mechanism | tenant_id + RLS | Separate tenant databases in shared Elastic Pool" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=11;align=left;spacingLeft=5;" vertex="1" parent="compare-table">
+          <mxGeometry y="60" width="1000" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cr2" value="Residual risk | RLS/app configuration errors remain possible | Identity, routing and configuration errors remain possible" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=11;align=left;spacingLeft=5;" vertex="1" parent="compare-table">
+          <mxGeometry y="90" width="1000" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cr3" value="Cost | Shared database | Pool-based; estimate from workload" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=11;align=left;spacingLeft=5;" vertex="1" parent="compare-table">
+          <mxGeometry y="120" width="1000" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cr4" value="Readiness | Test and approve before live use | Confirm BAA, controls, restore plan and legal requirements" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=11;align=left;spacingLeft=5;" vertex="1" parent="compare-table">
+          <mxGeometry y="150" width="1000" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

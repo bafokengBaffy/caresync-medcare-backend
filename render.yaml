@@ -1,0 +1,87 @@
+envVarGroups:
+  - name: caresync-runtime
+    envVars:
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SUPABASE_DB_USER
+        sync: false
+      - key: SUPABASE_DB_PASSWORD
+        sync: false
+      - key: FIREBASE_ENABLED
+        value: "true"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY_ID
+        sync: false
+      - key: FIREBASE_CLIENT_ID
+        sync: false
+
+services:
+  - type: web
+    name: caresync-api-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/caresync-api-gateway/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-runtime
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: PATIENT_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-patient-service
+          property: host
+      - key: CLINICAL_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-clinical-service
+          property: host
+      - key: BILLING_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-billing-service
+          property: host
+
+  - type: web
+    name: caresync-patient-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/caresync-patient-service/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-runtime
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+  - type: web
+    name: caresync-clinical-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/caresync-clinical-service/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-runtime
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+  - type: web
+    name: caresync-billing-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/caresync-billing-service/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-runtime
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod

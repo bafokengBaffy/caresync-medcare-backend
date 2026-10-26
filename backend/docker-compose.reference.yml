@@ -1,0 +1,8 @@
+# REFERENCE ONLY — do NOT run locally. All services deploy to cloud (Render).
+version: "3.9"
+services:
+  caresync-api-gateway:   { image: caresync/api-gateway:latest,   ports: ["8080:8080"] }
+  caresync-patient:       { image: caresync/patient-service:latest, ports: ["8081:8081"] }
+  caresync-clinical:      { image: caresync/clinical-service:latest, ports: ["8082:8082"] }
+  caresync-billing:       { image: caresync/billing-service:latest, ports: ["8083:8083"] }
+  nginx:                  { image: caresync/nginx:latest,          ports: ["80:80"] }

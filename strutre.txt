@@ -1,0 +1,54 @@
+# Save this as Get-ProjectTree.ps1 or run directly
+
+$outputFile = "myprojecttree.txt"
+$excludeFolders = @("node_modules", ".git", "venv", "env", "__pycache__", ".pytest_cache", ".mypy_cache", ".vscode", ".idea", "dist", "build", "target")
+$excludeExtensions = @(".exe", ".dll", ".pyc", ".pyo", ".pyd", ".db", ".sqlite", ".sqlite3", ".log", ".tmp", ".cache", ".min.js", ".min.css", ".map", ".ico", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".mp4", ".mp3", ".wav", ".zip", ".rar", ".7z", ".tar", ".gz")
+$maxFileSize = 1MB # Exclude files larger than 1MB
+
+function Get-FolderTree {
+    param(
+        [string]$Path = ".",
+        [string]$Indent = ""
+    )
+    
+    $items = Get-ChildItem -Path $Path -Force | Where-Object { 
+        $_.Name -notin $excludeFolders -and 
+        $_.Name -notlike ".*" 
+    } | Sort-Object Name
+    
+    $count = $items.Count
+    $index = 0
+    
+    foreach ($item in $items) {
+        $index++
+        $prefix = if ($index -eq $count) { "└── " } else { "├── " }
+        $childPrefix = if ($index -eq $count) { "    " } else { "│   " }
+        
+        if ($item.PSIsContainer) {
+            # It's a folder
+            Write-Output "$Indent$prefix$($item.Name)/"
+            Get-FolderTree -Path $item.FullName -Indent "$Indent$childPrefix"
+        } else {
+            # It's a file - check size and extension
+            $size = $item.Length
+            $ext = $item.Extension.ToLower()
+            
+            if ($size -lt $maxFileSize -and $ext -notin $excludeExtensions) {
+                $sizeStr = if ($size -gt 1KB) { 
+                    if ($size -gt 1MB) { "{0:N1}MB" -f ($size/1MB) } 
+                    else { "{0:N0}KB" -f ($size/1KB) }
+                } else { "{0}B" -f $size }
+                Write-Output "$Indent$prefix$($item.Name) ($sizeStr)"
+            }
+        }
+    }
+}
+
+# Generate the tree
+"Project Structure (excluding large files, node_modules, and binaries)" | Out-File -FilePath $outputFile -Encoding UTF8
+"=" * 60 | Out-File -FilePath $outputFile -Append -Encoding UTF8
+"" | Out-File -FilePath $outputFile -Append -Encoding UTF8
+
+Get-FolderTree | Out-File -FilePath $outputFile -Append -Encoding UTF8
+
+Write-Host "Project tree generated successfully! Saved to: $outputFile"

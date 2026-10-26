@@ -1,0 +1,115 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="data-flow" name="Data Flow Diagram">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareSync MedCare - Prototype Patient Journey (Test Data Only)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="1000" height="40" as="geometry" />
+        </mxCell>
+        <!-- Step 1 -->
+        <mxCell id="s1" value="1. Patient Registration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s1-d" value="Reception searches for or creates a patient using agreed synthetic or anonymized test data." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff3ff;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 2 -->
+        <mxCell id="s2" value="2. Appointment Booking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="80" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s2-d" value="Choose service, provider and time; the clinical service stores the appointment in PostgreSQL." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff3ff;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="140" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 3 -->
+        <mxCell id="s3" value="3. Care Visit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="540" y="80" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s3-d" value="An authorized provider opens the encounter; verify tenant, patient, appointment and provider links." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff7ee;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="140" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 4 -->
+        <mxCell id="s4" value="4. Access Checks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s4-d" value="Before access, enforce tenant, role and specialty checks; validate patient, provider and appointment links." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff7ee;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="140" width="200" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 5 -->
+        <mxCell id="s5" value="5. Clinical Note" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="80" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s5-d" value="Record a service-specific note through the clinical service in Firestore; enforce backend checks and Firestore rules." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="140" width="200" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 6 -->
+        <mxCell id="s6" value="6. Invoice" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="540" y="280" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s6-d" value="Billing prepares an invoice from the completed visit and CareSync-approved service fees." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff7ee;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="340" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 7 -->
+        <mxCell id="s7" value="7. Payment Record" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="280" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s7-d" value="Record payment amount and status against the invoice; no external payment provider is assumed." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="340" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 8 -->
+        <mxCell id="s8" value="8. Audit History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="280" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s8-d" value="Record actor, action, time, tenant and affected resource; protect audit records from alteration." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="340" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 9 -->
+        <mxCell id="s9" value="9. Management View" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="460" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s9-d" value="An authorized manager sees only agreed counts and totals derived from saved test records." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="520" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Step 10 -->
+        <mxCell id="s10" value="10. Review Before Live Use" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="540" y="460" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s10-d" value="Approve roles, privacy, security, backup and restore tests, performance and known issues before any live data." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5eef8;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="520" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Arrow flows -->
+        <mxCell id="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="s1-d" target="s2-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s2-d" target="s3-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s3-d" target="s4-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s4-d" target="s5-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s5-d" target="s6-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="s6-d" target="s7-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s7-d" target="s8-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s8-d" target="s9-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s9-d" target="s10-d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- PHI markers -->
+        <mxCell id="phi-legend" value="Prototype: synthetic/anonymized test data only - no live patient data or Colab/AI processing. Production requires written approval and tested privacy, security, backup and recovery controls." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffebee;strokeColor=#c62828;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="460" width="340" height="90" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

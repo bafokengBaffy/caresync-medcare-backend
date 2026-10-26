@@ -1,0 +1,175 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="fs-schema" name="Firestore Schema">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareSync MedCare - Firestore Clinical Notes (Proposed Schema; Test Data Only)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#bf360c;" vertex="1" parent="1">
+          <mxGeometry x="250" y="10" width="900" height="40" as="geometry" />
+        </mxCell>
+        <!-- Collection header -->
+        <mxCell id="coll" value="/clinical_notes/{note_id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc80;strokeColor=#e65100;fontSize=16;fontStyle=1;fontColor=#bf360c;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="80" width="500" height="50" as="geometry" />
+        </mxCell>
+        <!-- Document -->
+        <mxCell id="doc" value="{note_id}  •  document" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=13;fontStyle=1;fontColor=#bf360c;align=center;" vertex="1" parent="1">
+          <mxGeometry x="450" y="160" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-coll-doc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#e65100;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="coll" target="doc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Scalar fields (left column) -->
+        <mxCell id="scalar-group" value="SCALAR FIELDS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontColor=#1b5e20;" vertex="1" parent="1">
+          <mxGeometry x="60" y="240" width="400" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="tenant_id : string            (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="275" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="patient_id : string           (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="302" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="provider_id : string          (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="329" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="appointment_id : string       (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="356" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" value="specialty : string            (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="383" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s5b" value="   ↳ enum: DENTAL | MENTAL_HEALTH | OPTOMETRY |" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="80" y="405" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s5c" value="     NURSING | WELLNESS | COMMUNITY" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="80" y="423" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s6" value="note_type : string            (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="450" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s6b" value="   ↳ enum: SOAP_NOTE | PROGRESS_NOTE |" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="80" y="472" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s6c" value="     ASSESSMENT | DISCHARGE_SUMMARY" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="80" y="490" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s7" value="status : string               (required)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="517" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s7b" value="   ↳ enum: DRAFT | SIGNED | AMENDED | LOCKED" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="80" y="539" width="380" height="20" as="geometry" />
+        </mxCell>
+        <!-- SOAP map -->
+        <mxCell id="soap-group" value="soap_data : map  (required)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontColor=#0d47a1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="240" width="380" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="soap-1" value="subjective  : string" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="275" width="340" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="soap-2" value="objective   : string" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="302" width="340" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="soap-3" value="assessment  : string" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="329" width="340" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="soap-4" value="plan        : string" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="356" width="340" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="soap-note" value="(all 4 sub-fields required when soap_data present)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#555555;fontStyle=3;" vertex="1" parent="1">
+          <mxGeometry x="520" y="390" width="340" height="20" as="geometry" />
+        </mxCell>
+        <!-- vitals map -->
+        <mxCell id="vitals-group" value="vitals : map  (optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#6a1b9a;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontColor=#4a148c;" vertex="1" parent="1">
+          <mxGeometry x="920" y="240" width="380" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="v-1" value="blood_pressure : string  (e.g. &quot;118/76&quot;)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="275" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="v-2" value="heart_rate     : number" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="302" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="v-3" value="temperature_f  : number" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="329" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="v-4" value="weight_kg      : number" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="356" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="v-5" value="height_cm      : number" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="383" width="350" height="22" as="geometry" />
+        </mxCell>
+        <!-- attachments array -->
+        <mxCell id="att-group" value="attachments : array&lt;map&gt;  (optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontColor=#e65100;" vertex="1" parent="1">
+          <mxGeometry x="60" y="610" width="400" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="att-1" value="[{ name      : string," style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="645" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="att-2" value="   url       : string (Supabase Storage)," style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="672" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="att-3" value="   mime_type : string," style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="699" width="380" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="att-4" value="   size_bytes: number }]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="80" y="726" width="380" height="22" as="geometry" />
+        </mxCell>
+        <!-- Audit + versioning -->
+        <mxCell id="meta-group" value="AUDIT &amp; VERSIONING FIELDS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontColor=#263238;" vertex="1" parent="1">
+          <mxGeometry x="500" y="610" width="380" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="m-1" value="tags      : array&lt;string&gt;  (optional)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="645" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="m-2" value="version   : number  (optimistic lock)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="672" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="m-3" value="created_at: timestamp" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="699" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="m-4" value="updated_at: timestamp" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="726" width="350" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="m-5" value="signed_at : timestamp | null" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="520" y="753" width="350" height="22" as="geometry" />
+        </mxCell>
+        <!-- Security rules box -->
+        <mxCell id="rules" value="AUTHORIZATION CHECKS - DESIGN SUMMARY; IMPLEMENT AND TEST BEFORE LIVE USE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontColor=#b71c1c;" vertex="1" parent="1">
+          <mxGeometry x="920" y="500" width="380" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="r-1" value="Require authenticated user for every operation." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="535" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-2" value="Existing-note access requires tenant match." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="557" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-3" value="Create: token tenant matches incoming note." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="579" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-4" value="Providers need PROVIDER role + specialty match." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="601" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-5" value="ADMIN access is tenant-scoped; no global bypass." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="623" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-6" value="Updates cannot change tenant or specialty." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="645" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-7" value="Backend checks related IDs share one tenant." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="667" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-8" value="Create validates request.resource.data." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="689" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-9" value="Separate permissions; audit sensitive changes." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="711" width="350" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r-10" value="Test each role and operation before live use." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="940" y="733" width="350" height="20" as="geometry" />
+        </mxCell>
+        <!-- Cross-store note -->
+        <mxCell id="xstore" value="Cross-store links have no Firestore foreign keys. Clinical service must validate that tenant_id, patient_id, provider_id and appointment_id all refer to the same tenant. Use synthetic/anonymized data for the prototype." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#e1f5fe;strokeColor=#0277bd;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="820" width="800" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

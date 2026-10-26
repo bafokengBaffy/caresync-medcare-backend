@@ -1,0 +1,534 @@
+﻿Project Structure (excluding large files, node_modules, and binaries)
+============================================================
+
+├── backend/
+│   ├── caresync-api-gateway/
+│   │   ├── pom.xml (1KB)
+│   │   ├── render.yaml (225B)
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/
+│   │       │   │   └── health/
+│   │       │   │       └── caresync/
+│   │       │   │           └── gateway/
+│   │       │   │               ├── ApiGatewayApplication.java (320B)
+│   │       │   │               ├── config/
+│   │       │   │               │   ├── CorsConfig.java (2KB)
+│   │       │   │               │   ├── FirebaseGatewayTokenVerifier.java (963B)
+│   │       │   │               │   ├── GatewayFirebaseConfig.java (1KB)
+│   │       │   │               │   ├── GatewayRoutesConfig.java (1KB)
+│   │       │   │               │   ├── GatewayTokenVerifier.java (218B)
+│   │       │   │               │   ├── JwtAuthGatewayFilter.java (4KB)
+│   │       │   │               │   ├── OpenApiAggregationConfig.java (191B)
+│   │       │   │               │   ├── RateLimitConfig.java (1KB)
+│   │       │   │               │   └── VerifiedIdentity.java (166B)
+│   │       │   │               ├── error/
+│   │       │   │               │   └── GatewayErrorWebExceptionHandler.java (514B)
+│   │       │   │               └── filter/
+│   │       │   │                   ├── RateLimitGatewayFilter.java (1KB)
+│   │       │   │                   └── RequestIdGatewayFilter.java (782B)
+│   │       │   └── resources/
+│   │       │       ├── application.yml (328B)
+│   │       │       ├── application-local.yml (37B)
+│   │       │       ├── application-prod.yml (36B)
+│   │       │       ├── banner.txt (296B)
+│   │       │       └── logback-spring.xml (108B)
+│   │       └── test/
+│   │           └── java/
+│   │               └── health/
+│   │                   └── caresync/
+│   │                       └── gateway/
+│   │                           ├── CorsTest.java (115B)
+│   │                           ├── GatewayRouteTest.java (123B)
+│   │                           ├── JwtFilterTest.java (120B)
+│   │                           └── RateLimitTest.java (837B)
+│   ├── caresync-billing-service/
+│   │   ├── pom.xml (2KB)
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/
+│   │       │   │   └── health/
+│   │       │   │       └── caresync/
+│   │       │   │           └── billing/
+│   │       │   │               ├── BillingServiceApplication.java (486B)
+│   │       │   │               ├── controller/
+│   │       │   │               │   ├── InvoiceController.java (2KB)
+│   │       │   │               │   ├── PaymentController.java (1KB)
+│   │       │   │               │   └── ServiceFeeController.java (1KB)
+│   │       │   │               ├── domain/
+│   │       │   │               │   ├── Invoice.java (3KB)
+│   │       │   │               │   ├── InvoiceLineItem.java (2KB)
+│   │       │   │               │   ├── InvoiceLineItemRepository.java (339B)
+│   │       │   │               │   ├── InvoiceRepository.java (862B)
+│   │       │   │               │   ├── InvoiceStatus.java (142B)
+│   │       │   │               │   ├── Payment.java (2KB)
+│   │       │   │               │   ├── PaymentRepository.java (644B)
+│   │       │   │               │   ├── ServiceFee.java (2KB)
+│   │       │   │               │   └── ServiceFeeRepository.java (334B)
+│   │       │   │               ├── dto/
+│   │       │   │               │   ├── BillingSummaryResponse.java (132B)
+│   │       │   │               │   ├── InvoiceCreateRequest.java (383B)
+│   │       │   │               │   ├── InvoiceItemRequest.java (325B)
+│   │       │   │               │   ├── InvoiceLineResponse.java (193B)
+│   │       │   │               │   ├── InvoiceResponse.java (430B)
+│   │       │   │               │   ├── PaymentCreateRequest.java (399B)
+│   │       │   │               │   ├── PaymentMethod.java (144B)
+│   │       │   │               │   ├── PaymentResponse.java (260B)
+│   │       │   │               │   ├── ServiceFeeCreateRequest.java (498B)
+│   │       │   │               │   └── ServiceFeeResponse.java (234B)
+│   │       │   │               └── service/
+│   │       │   │                   ├── InvoiceService.java (8KB)
+│   │       │   │                   ├── PaymentService.java (4KB)
+│   │       │   │                   └── ServiceFeeService.java (1KB)
+│   │       │   └── resources/
+│   │       │       └── application.yml (513B)
+│   │       └── test/
+│   │           └── java/
+│   │               └── health/
+│   │                   └── caresync/
+│   │                       └── billing/
+│   │                           └── service/
+│   │                               └── PaymentServiceTest.java (2KB)
+│   ├── caresync-clinical-service/
+│   │   ├── bin/
+│   │   │   ├── pom.xml (2KB)
+│   │   │   ├── render.yaml (161B)
+│   │   │   └── src/
+│   │   │       ├── main/
+│   │   │       │   ├── java/
+│   │   │       │   │   └── health/
+│   │   │       │   │       └── caresync/
+│   │   │       │   │           └── clinical/
+│   │   │       │   │               ├── ClinicalServiceApplication.class (1KB)
+│   │   │       │   │               ├── controller/
+│   │   │       │   │               │   ├── AppointmentController.class (5KB)
+│   │   │       │   │               │   └── ClinicalNoteController.class (4KB)
+│   │   │       │   │               ├── domain/
+│   │   │       │   │               │   ├── Appointment.class (6KB)
+│   │   │       │   │               │   ├── AppointmentRepository.class (2KB)
+│   │   │       │   │               │   └── AppointmentStatus.class (1KB)
+│   │   │       │   │               ├── dto/
+│   │   │       │   │               │   ├── AppointmentCreateRequest.class (642B)
+│   │   │       │   │               │   ├── AppointmentResponse.class (583B)
+│   │   │       │   │               │   ├── AppointmentStatusRequest.class (402B)
+│   │   │       │   │               │   ├── ClinicalNoteCreateRequest.class (804B)
+│   │   │       │   │               │   ├── ClinicalNoteResponse.class (584B)
+│   │   │       │   │               │   └── SoapDataRequest.class (533B)
+│   │   │       │   │               ├── notes/
+│   │   │       │   │               │   ├── ClinicalNoteStore.class (1KB)
+│   │   │       │   │               │   ├── FirestoreClinicalNoteConfiguration.class (3KB)
+│   │   │       │   │               │   └── FirestoreClinicalNoteStore.class (5KB)
+│   │   │       │   │               └── service/
+│   │   │       │   │                   ├── AppointmentService.class (10KB)
+│   │   │       │   │                   └── ClinicalNoteService.class (9KB)
+│   │   │       │   └── resources/
+│   │   │       └── test/
+│   │   │           ├── java/
+│   │   │           │   └── health/
+│   │   │           │       └── caresync/
+│   │   │           │           └── clinical/
+│   │   │           │               └── service/
+│   │   │           │                   └── AppointmentServiceTest.class (7KB)
+│   │   │           └── resources/
+│   │   ├── pom.xml (2KB)
+│   │   ├── render.yaml (161B)
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/
+│   │       │   │   └── health/
+│   │       │   │       └── caresync/
+│   │       │   │           └── clinical/
+│   │       │   │               ├── ClinicalServiceApplication.java (490B)
+│   │       │   │               ├── controller/
+│   │       │   │               │   ├── AppointmentController.java (2KB)
+│   │       │   │               │   └── ClinicalNoteController.java (2KB)
+│   │       │   │               ├── domain/
+│   │       │   │               │   ├── Appointment.java (3KB)
+│   │       │   │               │   ├── AppointmentRepository.java (668B)
+│   │       │   │               │   └── AppointmentStatus.java (141B)
+│   │       │   │               ├── dto/
+│   │       │   │               │   ├── AppointmentCreateRequest.java (354B)
+│   │       │   │               │   ├── AppointmentResponse.java (369B)
+│   │       │   │               │   ├── AppointmentStatusRequest.java (230B)
+│   │       │   │               │   ├── ClinicalNoteCreateRequest.java (502B)
+│   │       │   │               │   ├── ClinicalNoteResponse.java (360B)
+│   │       │   │               │   └── SoapDataRequest.java (260B)
+│   │       │   │               ├── notes/
+│   │       │   │               │   ├── ClinicalNoteStore.java (201B)
+│   │       │   │               │   └── FirestoreClinicalNoteStore.java (2KB)
+│   │       │   │               └── service/
+│   │       │   │                   ├── AppointmentService.java (8KB)
+│   │       │   │                   └── ClinicalNoteService.java (7KB)
+│   │       │   └── resources/
+│   │       │       └── application.yml (569B)
+│   │       └── test/
+│   │           ├── java/
+│   │           │   └── health/
+│   │           │       └── caresync/
+│   │           │           └── clinical/
+│   │           │               └── service/
+│   │           │                   └── AppointmentServiceTest.java (3KB)
+│   │           └── resources/
+│   ├── caresync-common/
+│   │   ├── pom.xml (2KB)
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/
+│   │       │   │   └── health/
+│   │       │   │       └── caresync/
+│   │       │   │           └── common/
+│   │       │   │               ├── audit/
+│   │       │   │               │   ├── Auditable.java (200B)
+│   │       │   │               │   ├── AuditAspect.java (220B)
+│   │       │   │               │   ├── AuditClient.java (100B)
+│   │       │   │               │   ├── AuditContextHolder.java (371B)
+│   │       │   │               │   └── AuditEvent.java (385B)
+│   │       │   │               ├── config/
+│   │       │   │               │   ├── CommonAutoConfiguration.java (266B)
+│   │       │   │               │   └── FirebaseAdminConfig.java (853B)
+│   │       │   │               ├── dto/
+│   │       │   │               │   ├── PatientSummary.java (135B)
+│   │       │   │               │   ├── ProviderSummary.java (154B)
+│   │       │   │               │   ├── Specialty.java (124B)
+│   │       │   │               │   └── TenantSummary.java (146B)
+│   │       │   │               ├── exception/
+│   │       │   │               │   ├── ApiError.java (176B)
+│   │       │   │               │   ├── ConflictException.java (154B)
+│   │       │   │               │   ├── ErrorCode.java (149B)
+│   │       │   │               │   ├── ForbiddenException.java (156B)
+│   │       │   │               │   ├── GlobalExceptionHandler.java (2KB)
+│   │       │   │               │   ├── NotFoundException.java (154B)
+│   │       │   │               │   ├── TenantMismatchException.java (166B)
+│   │       │   │               │   └── ValidationException.java (158B)
+│   │       │   │               ├── security/
+│   │       │   │               │   ├── CaresyncPrincipal.java (175B)
+│   │       │   │               │   ├── FirebaseAdminTokenVerifier.java (503B)
+│   │       │   │               │   ├── FirebaseJwtFilter.java (3KB)
+│   │       │   │               │   ├── FirebaseTokenVerifier.java (255B)
+│   │       │   │               │   ├── JwtClaims.java (316B)
+│   │       │   │               │   ├── SecurityConfig.java (2KB)
+│   │       │   │               │   ├── TenantContext.java (688B)
+│   │       │   │               │   └── TenantContextFilter.java (1KB)
+│   │       │   │               ├── tenant/
+│   │       │   │               │   ├── TenantAware.java (147B)
+│   │       │   │               │   ├── TenantAwareEntityListener.java (377B)
+│   │       │   │               │   ├── TenantRlsContext.java (711B)
+│   │       │   │               │   └── TenantSpecification.java (339B)
+│   │       │   │               ├── util/
+│   │       │   │               │   ├── DateTimeUtils.java (189B)
+│   │       │   │               │   ├── JsonUtils.java (131B)
+│   │       │   │               │   ├── MoneyUtils.java (324B)
+│   │       │   │               │   ├── PageableUtils.java (509B)
+│   │       │   │               │   ├── RegexUtils.java (212B)
+│   │       │   │               │   └── UuidUtils.java (190B)
+│   │       │   │               └── web/
+│   │       │   │                   ├── ApiResponse.java (200B)
+│   │       │   │                   ├── CorrelationHeaders.java (233B)
+│   │       │   │                   ├── PageResponse.java (141B)
+│   │       │   │                   └── RequestIdFilter.java (743B)
+│   │       │   └── resources/
+│   │       │       ├── application-common.yml (221B)
+│   │       │       ├── logback-common.xml (238B)
+│   │       │       └── META-INF/
+│   │       │           └── spring/
+│   │       │               └── org.springframework.boot.autoconfigure.AutoConfiguration.imports (53B)
+│   │       └── test/
+│   │           └── java/
+│   │               └── health/
+│   │                   └── caresync/
+│   │                       └── common/
+│   │                           ├── BolaDefenseFilterTest.java (864B)
+│   │                           ├── FirebaseJwtFilterTest.java (3KB)
+│   │                           ├── GlobalExceptionHandlerTest.java (132B)
+│   │                           ├── MoneyUtilsTest.java (323B)
+│   │                           ├── TenantContextFilterTest.java (2KB)
+│   │                           └── TestTokens.java (140B)
+│   ├── caresync-patient-service/
+│   │   ├── Dockerfile (157B)
+│   │   ├── pom.xml (2KB)
+│   │   ├── render.yaml (160B)
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/
+│   │       │   │   └── health/
+│   │       │   │       └── caresync/
+│   │       │   │           └── patient/
+│   │       │   │               ├── audit/
+│   │       │   │               │   ├── AuditRequestListener.java (136B)
+│   │       │   │               │   └── JpaAuditClient.java (438B)
+│   │       │   │               ├── config/
+│   │       │   │               │   ├── AuditRepositoryConfig.java (154B)
+│   │       │   │               │   ├── FlywayConfig.java (145B)
+│   │       │   │               │   ├── JpaConfig.java (142B)
+│   │       │   │               │   └── PatientSecurityConfig.java (154B)
+│   │       │   │               ├── controller/
+│   │       │   │               │   └── PatientController.java (1KB)
+│   │       │   │               ├── domain/
+│   │       │   │               │   ├── entity/
+│   │       │   │               │   │   ├── AuditLog.java (958B)
+│   │       │   │               │   │   ├── Patient.java (3KB)
+│   │       │   │               │   │   ├── Provider.java (1KB)
+│   │       │   │               │   │   └── Tenant.java (1KB)
+│   │       │   │               │   ├── repository/
+│   │       │   │               │   │   ├── AuditLogRepository.java (245B)
+│   │       │   │               │   │   ├── PatientRepository.java (539B)
+│   │       │   │               │   │   ├── ProviderRepository.java (498B)
+│   │       │   │               │   │   ├── spec/
+│   │       │   │               │   │   │   ├── PatientSpecifications.java (541B)
+│   │       │   │               │   │   │   └── ProviderSpecifications.java (409B)
+│   │       │   │               │   │   └── TenantRepository.java (345B)
+│   │       │   │               │   └── valueobject/
+│   │       │   │               │       ├── Address.java (147B)
+│   │       │   │               │       ├── EmergencyContact.java (113B)
+│   │       │   │               │       ├── Gender.java (103B)
+│   │       │   │               │       └── PhoneNumber.java (94B)
+│   │       │   │               ├── dto/
+│   │       │   │               │   ├── PatientCreateRequest.java (379B)
+│   │       │   │               │   ├── PatientFilter.java (107B)
+│   │       │   │               │   ├── PatientResponse.java (213B)
+│   │       │   │               │   ├── PatientSearchRequest.java (113B)
+│   │       │   │               │   ├── PatientSummaryResponse.java (144B)
+│   │       │   │               │   ├── PatientUpdateRequest.java (353B)
+│   │       │   │               │   ├── ProviderCreateRequest.java (290B)
+│   │       │   │               │   ├── ProviderResponse.java (172B)
+│   │       │   │               │   ├── ProviderSummaryResponse.java (163B)
+│   │       │   │               │   ├── ProviderUpdateRequest.java (149B)
+│   │       │   │               │   ├── TenantCreateRequest.java (173B)
+│   │       │   │               │   └── TenantResponse.java (148B)
+│   │       │   │               ├── event/
+│   │       │   │               │   ├── PatientCreatedEvent.java (130B)
+│   │       │   │               │   ├── PatientEventPublisher.java (311B)
+│   │       │   │               │   └── PatientUpdatedEvent.java (130B)
+│   │       │   │               ├── mapper/
+│   │       │   │               │   ├── PatientMapper.java (449B)
+│   │       │   │               │   ├── ProviderMapper.java (457B)
+│   │       │   │               │   └── TenantMapper.java (265B)
+│   │       │   │               ├── PatientServiceApplication.java (551B)
+│   │       │   │               └── service/
+│   │       │   │                   ├── AuditService.java (290B)
+│   │       │   │                   ├── PatientService.java (3KB)
+│   │       │   │                   └── ProviderService.java (1KB)
+│   │       │   └── resources/
+│   │       │       ├── application.yml (516B)
+│   │       │       ├── application-local.yml (121B)
+│   │       │       ├── application-prod.yml (68B)
+│   │       │       ├── application-test.yml (47B)
+│   │       │       ├── banner.txt (27B)
+│   │       │       ├── db/
+│   │       │       │   └── migration/
+│   │       │       │       ├── V1__tenants.sql (329B)
+│   │       │       │       ├── V2__patients.sql (911B)
+│   │       │       │       ├── V3__providers.sql (674B)
+│   │       │       │       ├── V4__audit_logs.sql (948B)
+│   │       │       │       ├── V5__rls_policies.sql (1KB)
+│   │       │       │       ├── V6__appointments_and_availability.sql (3KB)
+│   │       │       │       ├── V7__billing_schema.sql (4KB)
+│   │       │       │       └── V8__tenant_rls_for_clinical_and_billing.sql (677B)
+│   │       │       └── logback-spring.xml (102B)
+│   │       └── test/
+│   │           ├── java/
+│   │           │   └── health/
+│   │           │       └── caresync/
+│   │           │           └── patient/
+│   │           │               ├── FlywayMigrationTest.java (126B)
+│   │           │               ├── PatientControllerTest.java (128B)
+│   │           │               ├── PatientServiceTest.java (1KB)
+│   │           │               ├── TenantIsolationIT.java (158B)
+│   │           │               └── TestFixtures.java (94B)
+│   │           └── resources/
+│   │               ├── application-test.yml (36B)
+│   │               └── fixtures/
+│   │                   └── patients.json (2B)
+│   ├── docker-compose.reference.yml (553B)
+│   ├── mvnw (343B)
+│   ├── mvnw.cmd (319B)
+│   └── pom.xml (4KB)
+├── docs/
+│   ├── diagrams/
+│   │   ├── data-flow-diagram.drawio (11KB)
+│   │   ├── db-firestore-schema.drawio (17KB)
+│   │   ├── db-postgres-erd.drawio (40KB)
+│   │   ├── db-tenant-isolation.drawio (9KB)
+│   │   ├── deployment-pipeline.drawio (13KB)
+│   │   ├── microservices-decomposition.drawio (9KB)
+│   │   ├── production-architecture.drawio (12KB)
+│   │   ├── prototype-architecture.drawio (20KB)
+│   │   ├── security-architecture.drawio (15KB)
+│   │   └── tenant-isolation.drawio (10KB)
+│   └── reports/
+│       ├── CareSync MedCare Full Developer Technical Report.pdf (360KB)
+│       └── CareSync_MedCare_Comprehensive_Project_Proposal_October_2026.pdf (301KB)
+├── frontend/
+│   ├── Dockerfile (268B)
+│   ├── e2e/
+│   │   ├── auth.spec.ts (254B)
+│   │   └── navigation.spec.ts (200B)
+│   ├── index.html (464B)
+│   ├── nginx.conf (194B)
+│   ├── package.json (3KB)
+│   ├── playwright.config.ts (385B)
+│   ├── postcss.config.js (67B)
+│   ├── public/
+│   │   └── robots.txt (26B)
+│   ├── README.md (753B)
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── appointments.ts (868B)
+│   │   │   ├── audit.ts (292B)
+│   │   │   ├── index.ts (332B)
+│   │   │   ├── invoices.ts (650B)
+│   │   │   ├── notes.ts (651B)
+│   │   │   ├── patients.ts (769B)
+│   │   │   ├── payments.ts (432B)
+│   │   │   ├── providers.ts (684B)
+│   │   │   └── tenants.ts (458B)
+│   │   ├── App.css (3KB)
+│   │   ├── App.tsx (4KB)
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── auth/
+│   │   │   │   ├── ProtectedRoute.tsx (535B)
+│   │   │   │   └── RoleGate.tsx (377B)
+│   │   │   ├── common/
+│   │   │   │   ├── ConfirmDialog.tsx (1KB)
+│   │   │   │   ├── ErrorBoundary.tsx (973B)
+│   │   │   │   ├── ErrorState.tsx (612B)
+│   │   │   │   ├── LoadingScreen.tsx (199B)
+│   │   │   │   ├── PageHeader.tsx (58B)
+│   │   │   │   ├── Pagination.tsx (724B)
+│   │   │   │   ├── SearchInput.tsx (595B)
+│   │   │   │   └── StatusBadge.tsx (1KB)
+│   │   │   ├── forms/
+│   │   │   │   ├── AppointmentForm.tsx (2KB)
+│   │   │   │   ├── FormField.tsx (639B)
+│   │   │   │   ├── index.ts (356B)
+│   │   │   │   ├── InvoiceForm.tsx (3KB)
+│   │   │   │   ├── LoginForm.tsx (1KB)
+│   │   │   │   ├── NoteForm.tsx (3KB)
+│   │   │   │   ├── PatientForm.tsx (3KB)
+│   │   │   │   ├── PaymentForm.tsx (2KB)
+│   │   │   │   └── ProviderForm.tsx (2KB)
+│   │   │   ├── layout/
+│   │   │   │   ├── AppLayout.tsx (571B)
+│   │   │   │   ├── AuthLayout.tsx (737B)
+│   │   │   │   ├── Sidebar.tsx (3KB)
+│   │   │   │   └── Topbar.tsx (1KB)
+│   │   │   └── ui/
+│   │   │       ├── alert.tsx (1KB)
+│   │   │       ├── avatar.tsx (1KB)
+│   │   │       ├── badge.tsx (1009B)
+│   │   │       ├── button.test.tsx (469B)
+│   │   │       ├── button.tsx (2KB)
+│   │   │       ├── card.tsx (2KB)
+│   │   │       ├── data-table.tsx (2KB)
+│   │   │       ├── dialog.tsx (3KB)
+│   │   │       ├── empty-state.tsx (743B)
+│   │   │       ├── input.tsx (713B)
+│   │   │       ├── label.tsx (630B)
+│   │   │       ├── page-header.tsx (604B)
+│   │   │       ├── select.tsx (3KB)
+│   │   │       ├── separator.tsx (682B)
+│   │   │       ├── skeleton.tsx (218B)
+│   │   │       ├── spinner.tsx (213B)
+│   │   │       ├── table.tsx (2KB)
+│   │   │       ├── tabs.tsx (2KB)
+│   │   │       └── textarea.tsx (618B)
+│   │   ├── hooks/
+│   │   │   ├── index.ts (389B)
+│   │   │   ├── use-appointments.ts (1KB)
+│   │   │   ├── use-audit.ts (245B)
+│   │   │   ├── use-auth.ts (1KB)
+│   │   │   ├── use-debounce.ts (305B)
+│   │   │   ├── use-invoices.ts (1KB)
+│   │   │   ├── use-local-storage.ts (458B)
+│   │   │   ├── use-media-query.ts (453B)
+│   │   │   ├── use-notes.ts (1KB)
+│   │   │   ├── use-pagination.ts (327B)
+│   │   │   ├── use-patients.ts (2KB)
+│   │   │   ├── use-payments.ts (717B)
+│   │   │   └── use-providers.ts (1KB)
+│   │   ├── index.css (2KB)
+│   │   ├── lib/
+│   │   │   ├── api-client.ts (1KB)
+│   │   │   ├── constants.ts (996B)
+│   │   │   ├── firebase.ts (666B)
+│   │   │   ├── query-client.ts (195B)
+│   │   │   ├── utils.test.ts (532B)
+│   │   │   ├── utils.ts (932B)
+│   │   │   └── validators.ts (2KB)
+│   │   ├── main.tsx (704B)
+│   │   ├── pages/
+│   │   │   ├── admin/
+│   │   │   │   ├── AuditLogPage.tsx (1KB)
+│   │   │   │   └── TenantAdminPage.tsx (956B)
+│   │   │   ├── appointments/
+│   │   │   │   ├── AppointmentCreatePage.tsx (409B)
+│   │   │   │   ├── AppointmentDetailPage.tsx (2KB)
+│   │   │   │   ├── AppointmentsListPage.tsx (2KB)
+│   │   │   │   ├── AvailabilityPage.tsx (431B)
+│   │   │   │   └── CalendarPage.tsx (920B)
+│   │   │   ├── auth/
+│   │   │   │   ├── ForgotPasswordPage.tsx (870B)
+│   │   │   │   ├── LoginPage.tsx (734B)
+│   │   │   │   ├── RegisterPage.tsx (1KB)
+│   │   │   │   └── ResetPasswordPage.tsx (758B)
+│   │   │   ├── billing/
+│   │   │   │   ├── InvoiceCreatePage.tsx (388B)
+│   │   │   │   ├── InvoiceDetailPage.tsx (2KB)
+│   │   │   │   ├── InvoicesListPage.tsx (1KB)
+│   │   │   │   └── PaymentsPage.tsx (1KB)
+│   │   │   ├── clinical-notes/
+│   │   │   │   ├── NoteCreatePage.tsx (409B)
+│   │   │   │   ├── NoteDetailPage.tsx (2KB)
+│   │   │   │   └── NotesListPage.tsx (1KB)
+│   │   │   ├── dashboard/
+│   │   │   │   └── DashboardPage.tsx (2KB)
+│   │   │   ├── ErrorPage.tsx (587B)
+│   │   │   ├── NotFoundPage.test.tsx (355B)
+│   │   │   ├── NotFoundPage.tsx (551B)
+│   │   │   ├── patients/
+│   │   │   │   ├── PatientCreatePage.tsx (433B)
+│   │   │   │   ├── PatientDetailPage.tsx (3KB)
+│   │   │   │   ├── PatientEditPage.tsx (762B)
+│   │   │   │   └── PatientsListPage.tsx (2KB)
+│   │   │   ├── providers/
+│   │   │   │   ├── ProviderDetailPage.tsx (1KB)
+│   │   │   │   └── ProvidersListPage.tsx (1KB)
+│   │   │   └── settings/
+│   │   │       ├── ProfilePage.tsx (1KB)
+│   │   │       └── SettingsPage.tsx (917B)
+│   │   ├── router.tsx (4KB)
+│   │   ├── stores/
+│   │   │   ├── auth-store.ts (510B)
+│   │   │   ├── filters-store.ts (414B)
+│   │   │   └── ui-store.ts (552B)
+│   │   ├── styles/
+│   │   │   ├── components.css (1KB)
+│   │   │   ├── globals.css (2KB)
+│   │   │   └── utilities.css (272B)
+│   │   ├── test/
+│   │   │   ├── mocks/
+│   │   │   │   └── handlers.ts (384B)
+│   │   │   ├── setup.ts (283B)
+│   │   │   └── utils.tsx (611B)
+│   │   ├── types/
+│   │   │   ├── appointment.ts (705B)
+│   │   │   ├── audit.ts (296B)
+│   │   │   ├── auth.ts (367B)
+│   │   │   ├── clinical-note.ts (1014B)
+│   │   │   ├── common.ts (330B)
+│   │   │   ├── index.ts (274B)
+│   │   │   ├── invoice.ts (681B)
+│   │   │   ├── patient.ts (770B)
+│   │   │   ├── payment.ts (415B)
+│   │   │   ├── provider.ts (575B)
+│   │   │   └── tenant.ts (121B)
+│   │   └── vite-env.d.ts (474B)
+│   ├── tailwind.config.ts (2KB)
+│   ├── tsconfig.app.json (628B)
+│   ├── tsconfig.json (119B)
+│   ├── tsconfig.node.json (233B)
+│   ├── vercel.json (309B)
+│   └── vite.config.ts (714B)
+├── myprojecttree.txt (138B)
+└── strutre.txt (2KB)

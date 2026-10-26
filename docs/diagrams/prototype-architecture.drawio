@@ -1,0 +1,204 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="proto-arch-full" name="Prototype Architecture - Full">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="title" value="CareSync MedCare - Prototype Architecture (Proposed; Test Data Only)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="800" height="50" as="geometry" />
+        </mxCell>
+        <!-- Client Layer -->
+        <mxCell id="client-zone" value="CLIENT LAYER" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;dashed=1;fontStyle=1;fontColor=#1565c0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="1500" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="frontend" value="Frontend: React 18 + Vite + TypeScript (Vercel)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="110" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="browser" value="User Browser&#10;(Chrome/Safari/Firefox)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="40" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cdn" value="Vercel Edge CDN&#10;Global Distribution" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="500" y="110" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-client" value="Firebase Auth SDK&#10;OIDC / JWT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="780" y="110" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="firestore-sdk" value="Firebase Firestore SDK&lt;br&gt;Real-time reads only where security rules authorize access" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="110" width="200" height="70" as="geometry" />
+        </mxCell>
+        <!-- API Gateway Layer -->
+        <mxCell id="gateway-zone" value="API GATEWAY LAYER (Render)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;dashed=1;fontStyle=1;fontColor=#e65100;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="240" width="1500" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="api-gateway" value="API Gateway: Spring Cloud Gateway (8080)&lt;br&gt;Firebase JWT validation; proposed rate limiting, CORS and routing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="400" y="270" width="380" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudflare" value="Cloudflare DNS&lt;br&gt;Basic protection; configure records for frontend/API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="100" y="290" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="rate-limiter" value="Bucket4j Rate Limiter&#10;100 req/min per IP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="850" y="290" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="jwt-validator" value="Firebase Admin SDK&#10;JWT Verification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="290" width="200" height="70" as="geometry" />
+        </mxCell>
+        <!-- Microservices Layer -->
+        <mxCell id="services-zone" value="MICROSERVICES LAYER (Render - 750 hrs/mo)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;dashed=1;fontStyle=1;fontColor=#2e7d32;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="450" width="1500" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-patient" value="caresync-patient-service&#10;(Port 8081)&#10;• Patient Demographics&#10;• Insurance Profiling&#10;• Emergency Contacts&#10;• Search Indexes&#10;→ Supabase PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="490" width="280" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-clinical" value="caresync-clinical-service&#10;(Port 8082)&#10;• Appointment Scheduling&#10;• Provider Availability&#10;• Metadata Linkage&#10;• PG ↔ Firestore Bridge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="490" width="280" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-billing" value="caresync-billing-service&#10;(Port 8083)&#10;• Invoice Generation&#10;• Payment Status Tracking&#10;• Redis Billing Code Cache&#10;• RabbitMQ Event Publishing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="740" y="490" width="280" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="svc-notification" value="Optional async notifications consumer&lt;br&gt;Messaging is future scope and requires approval" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;fontSize=11;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="490" width="280" height="140" as="geometry" />
+        </mxCell>
+        <!-- Data Layer -->
+        <mxCell id="data-zone" value="DATA LAYER" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c62828;dashed=1;fontStyle=1;fontColor=#c62828;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="690" width="1500" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase-db" value="Supabase PostgreSQL 15&lt;br&gt;Tenant-scoped relational data; synthetic/anonymized test records only" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="720" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="firestore" value="Firebase Firestore&lt;br&gt;Clinical-note schema; synthetic/anonymized test records only" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="720" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" value="Redis 7 on Render&lt;br&gt;Billing-code cache only; ephemeral cache, not record storage" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="700" y="720" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="rabbitmq" value="RabbitMQ 3.12&#10;(CloudAMQP - Little Lemur)&#10;• AMQP Protocol&#10;• 1,000,000 messages/mo&#10;• Async Event Distribution&#10;• Audit/Invoice Events" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="720" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="storage" value="Supabase Storage&lt;br&gt;Prototype attachments only; do not use live patient files" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="720" width="220" height="150" as="geometry" />
+        </mxCell>
+        <!-- AI/ML Layer -->
+        <mxCell id="ai-zone" value="AI/ML WORKSPACE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#6a1b9a;dashed=1;fontStyle=1;fontColor=#6a1b9a;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="920" width="1500" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="colab" value="Optional Colab training workspace&lt;br&gt;Synthetic/de-identified data only; never send live PHI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="950" width="400" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="firebase-auth" value="Firebase Auth&lt;br&gt;Proposed claims: tenant_id, role, specialty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="950" width="250" height="70" as="geometry" />
+        </mxCell>
+        <!-- Connections -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="browser" target="frontend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="frontend" target="cdn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="frontend" target="auth-client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="frontend" target="firestore-sdk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#e65100;strokeWidth=2;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cloudflare" target="cdn" value="DNS resolution">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#e65100;strokeWidth=2;" edge="1" parent="1" source="api-gateway" target="rate-limiter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#e65100;strokeWidth=2;" edge="1" parent="1" source="api-gateway" target="jwt-validator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;exitX=0.25;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="api-gateway" target="svc-patient">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="api-gateway" target="svc-clinical">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;exitX=0.75;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="api-gateway" target="svc-billing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="svc-billing" target="rabbitmq">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;" edge="1" parent="1" source="rabbitmq" target="svc-notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#c62828;strokeWidth=2;" edge="1" parent="1" source="svc-patient" target="supabase-db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#c62828;strokeWidth=2;" edge="1" parent="1" source="svc-clinical" target="firestore">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#c62828;strokeWidth=2;" edge="1" parent="1" source="svc-clinical" target="supabase-db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#c62828;strokeWidth=2;" edge="1" parent="1" source="svc-billing" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#c62828;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="svc-clinical" target="storage">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="670" />
+              <mxPoint x="1410" y="670" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6a1b9a;strokeWidth=2;dashed=1;" edge="1" parent="1" source="firebase-auth" target="jwt-validator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Legend -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1060" width="600" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" value="LEGEND" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1065" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1090" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend1t" value="Client/Frontend Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1090" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="270" y="1090" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend2t" value="API Gateway Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1090" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="470" y="1090" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend3t" value="Microservices Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="510" y="1090" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1120" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend4t" value="Data/Storage Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1120" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="270" y="1120" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend5t" value="AI/ML/Auth Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1120" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend6" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#2e7d32;dashed=1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="470" y="1120" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend6t" value="Synchronous Call" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="510" y="1120" width="130" height="20" as="geometry" />
+        </mxCell>
+        <!-- Constraint Note -->
+        <mxCell id="constraint-note" value="Prototype is not approved for live patient care. Use agreed test data only. Cloud builds/runtime keep local workload within the reported workstation limit." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="1060" width="450" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="frontend" target="api-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

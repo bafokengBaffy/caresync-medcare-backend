@@ -1,0 +1,113 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="prod-arch" name="Production Azure + GCP Architecture">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareSync MedCare - Proposed Production Target (Azure Core; Optional GCP AI/ML)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#0d47a1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="1000" height="50" as="geometry" />
+        </mxCell>
+        <!-- Edge / Global Layer -->
+        <mxCell id="edge-zone" value="PROPOSED ENTRY AND IDENTITY CONTROLS" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#0d47a1;dashed=1;fontStyle=1;fontColor=#0d47a1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="1700" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="users" value="Healthcare Users&#10;(Providers, Staff, Admins)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="110" width="40" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="frontdoor" value="Azure Front Door&lt;br&gt;WAF, TLS 1.3 and edge protection (target; verify configuration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="105" width="280" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="entra-id" value="Microsoft Entra ID&lt;br&gt;MFA and Conditional Access (production target)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="105" width="250" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="keyvault" value="Azure Key Vault&lt;br&gt;Secrets and customer-managed key target; confirm HSM/key design" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="890" y="105" width="250" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="sentinel" value="Azure Sentinel&lt;br&gt;SIEM / threat monitoring integrated with Azure logs (target)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1565c0;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="105" width="250" height="95" as="geometry" />
+        </mxCell>
+        <!-- Azure VNet / Compute Layer -->
+        <mxCell id="vnet-zone" value="PROPOSED AZURE RUNTIME AND NETWORK (topology/access to be validated)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#1b5e20;dashed=1;fontStyle=1;fontColor=#1b5e20;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="250" width="1700" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="aks" value="Azure Kubernetes Service&lt;br&gt;Spring Boot services; deployment, scaling and operations design required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontStyle=1;fontSize=12;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="100" y="290" width="350" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="private-link" value="Azure Private Link / private endpoints&lt;br&gt;Target for internal data access; validate exposure and routing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="450" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="health-data" value="Azure Health Data Services&lt;br&gt;FHIR R4 and DICOM services in the technical report" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="500" y="450" width="300" height="90" as="geometry" />
+        </mxCell>
+        <!-- Database Layer -->
+        <mxCell id="db-zone" value="PROPOSED DATA PERSISTENCE (confirm migration and per-tenant design)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;dashed=1;fontStyle=1;fontColor=#f57f17;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="1700" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="sql-pool" value="Azure SQL Elastic Pools&lt;br&gt;Database-per-tenant target; shared pool compute; TDE / customer-managed keys" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffe082;strokeColor=#f57f17;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="670" width="300" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="log-analytics" value="Azure Log Analytics&lt;br&gt;Audit/operational logs with Sentinel; retention and immutability to be agreed" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffe082;strokeColor=#f57f17;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="670" width="280" height="160" as="geometry" />
+        </mxCell>
+        <!-- GCP AI/ML Layer -->
+        <mxCell id="gcp-zone" value="OPTIONAL FUTURE GCP AI/ML (not part of the prototype)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;dashed=1;fontStyle=1;fontColor=#283593;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="900" width="1700" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="vertex-ai" value="Vertex AI&lt;br&gt;Potential summarization/coding support; subject to approval, safeguards and human review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="940" width="320" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="bigquery" value="BigQuery&lt;br&gt;Population-health analytics using approved de-identified data only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="940" width="300" height="160" as="geometry" />
+        </mxCell>
+        <!-- CI/CD & Observability -->
+        <mxCell id="devops-zone" value="PROPOSED DELIVERY AND READINESS GATES" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;dashed=1;fontStyle=1;fontColor=#4a148c;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1160" width="1700" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="github-actions" value="GitHub Actions&lt;br&gt;Snyk/Trivy scans and automated tests; production deployment must be gated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontStyle=1;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1200" width="320" height="110" as="geometry" />
+        </mxCell>
+        <!-- Connections -->
+        <mxCell id="c1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="users" target="frontdoor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;" edge="1" parent="1" source="frontdoor" target="aks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;dashed=1;" edge="1" parent="1" source="entra-id" target="aks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;dashed=1;" edge="1" parent="1" source="keyvault" target="aks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1565c0;strokeWidth=2;dashed=1;" edge="1" parent="1" source="sentinel" target="log-analytics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;" edge="1" parent="1" source="aks" target="sql-pool">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;" edge="1" parent="1" source="aks" target="health-data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2e7d32;strokeWidth=2;dashed=1;" edge="1" parent="1" source="private-link" target="sql-pool">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3949ab;strokeWidth=2;dashed=1;" edge="1" parent="1" source="sql-pool" target="bigquery" value="Approved de-identified analytics export only">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3949ab;strokeWidth=2;dashed=1;" edge="1" parent="1" source="private-link" target="health-data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3949ab;strokeWidth=2;" edge="1" parent="1" source="vertex-ai" target="bigquery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6a1b9a;strokeWidth=2;dashed=1;" edge="1" parent="1" source="github-actions" target="aks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- HIPAA Badge -->
+        <mxCell id="hipaa-badge" value="FUTURE TARGET ONLY - NOT A COMPLIANCE CLAIM. Verify BAAs, service eligibility, configuration, privacy/security controls and CareSync approval before any live patient data." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#c8e6c9;strokeColor=#1b5e20;fontSize=12;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="940" width="340" height="130" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

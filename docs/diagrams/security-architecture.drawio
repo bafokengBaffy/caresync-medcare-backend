@@ -1,0 +1,137 @@
+<mxfile host="Electron" version="21.1.2" type="device">
+  <diagram id="security-arch" name="Security Architecture">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1400" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="CareSync MedCare - Security Controls and Pre-live Gates (Proposed)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#b71c1c;" vertex="1" parent="1">
+          <mxGeometry x="250" y="10" width="900" height="40" as="geometry" />
+        </mxCell>
+        <!-- Layer 1: Edge Security -->
+        <mxCell id="layer1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="70" width="1300" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="layer1-label" value="LAYER 1: EDGE AND TRANSPORT (configure and verify)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#b71c1c;" vertex="1" parent="1">
+          <mxGeometry x="70" y="80" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ddos" value="Prototype: Cloudflare DNS/basic protection&lt;br&gt;Production target: Azure Front Door" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="115" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="waf" value="Production target: Front Door WAF / OWASP rules&lt;br&gt;Verify rules and coverage before launch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="115" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tls" value="Prototype target: TLS 1.2+&lt;br&gt;Production target: TLS 1.3; verify all endpoints/certificates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="115" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="rate" value="Prototype target: Bucket4j 100 requests/minute/IP&lt;br&gt;Confirm limits and exceptions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="115" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cors" value="Define and test an explicit CORS origin allowlist before release" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="115" width="180" height="70" as="geometry" />
+        </mxCell>
+        <!-- Layer 2: Identity & Access -->
+        <mxCell id="layer2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#283593;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="240" width="1300" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="layer2-label" value="LAYER 2: IDENTITY AND TENANT AUTHORIZATION (approve roles)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="70" y="250" width="400" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-proto" value="Prototype target: Firebase Auth + JWT claims&lt;br&gt;tenant_id, role and specialty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="285" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-prod" value="Production target: Microsoft Entra ID + MFA + Conditional Access&lt;br&gt;Future design; not deployed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="285" width="350" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="bola" value="Every request: verified tenant must match requested tenant; enforce in service/query and RLS. Test Tenant A access to Tenant B = 403." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5cae9;strokeColor=#3949ab;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="850" y="285" width="450" height="80" as="geometry" />
+        </mxCell>
+        <!-- Layer 3: Data Protection -->
+        <mxCell id="layer3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#1b5e20;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="410" width="1300" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="layer3-label" value="LAYER 3: DATA PROTECTION" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#1b5e20;" vertex="1" parent="1">
+          <mxGeometry x="70" y="420" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="rest-enc" value="Prototype: Supabase provider encryption at rest&lt;br&gt;Production target: Azure TDE + customer-managed keys" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="455" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="transit-enc" value="Prototype: TLS 1.2+&lt;br&gt;Production target: TLS 1.3; verify end-to-end configuration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="455" width="350" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="secrets" value="Prototype: Render/GitHub secrets&lt;br&gt;Production target: Azure Key Vault; never commit secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="850" y="455" width="450" height="80" as="geometry" />
+        </mxCell>
+        <!-- Layer 4: Audit & Monitoring -->
+        <mxCell id="layer4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="580" width="1300" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="layer4-label" value="LAYER 4: AUDIT &amp; MONITORING" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#e65100;" vertex="1" parent="1">
+          <mxGeometry x="70" y="590" width="350" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="audit-proto" value="Prototype target: PostgreSQL audit_logs with JSONB deltas&lt;br&gt;Protect access; configure and test append-only behavior" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe082;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="625" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="audit-prod" value="Production target: Log Analytics + Sentinel&lt;br&gt;Retention period and immutability must be agreed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe082;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="625" width="350" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sentinel-rule" value="Planned detections: unusual access, cross-tenant attempts, repeated failed sign-ins and suspected data export" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe082;strokeColor=#f57f17;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="850" y="625" width="450" height="80" as="geometry" />
+        </mxCell>
+        <!-- Layer 5: CI/CD Security Gates -->
+        <mxCell id="layer5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#6a1b9a;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="750" width="1300" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="layer5-label" value="LAYER 5: CI/CD SECURITY GATES (Shift-Left)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#4a148c;" vertex="1" parent="1">
+          <mxGeometry x="70" y="760" width="400" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="sast" value="GitHub Actions: Snyk scans on each pull request&lt;br&gt;Java and JavaScript dependencies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="795" width="250" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="container-scan" value="GitHub Actions: Trivy scans on each pull request&lt;br&gt;Container and Dockerfile findings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="380" y="795" width="250" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="dast" value="OWASP ZAP nightly against authorized Render staging only&lt;br&gt;Track findings, fix and retest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="660" y="795" width="250" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="tenant-test" value="JUnit integration test for every new endpoint&lt;br&gt;Tenant A requesting Tenant B data must receive 403" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#6a1b9a;fontSize=11;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="940" y="795" width="360" height="95" as="geometry" />
+        </mxCell>
+        <!-- Flow arrows -->
+        <mxCell id="f1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#c62828;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="rate" target="auth-proto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#283593;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="bola" target="rest-enc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1b5e20;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="secrets" target="audit-prod">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f57f17;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="sentinel-rule" target="sast">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- HIPAA Matrix Table -->
+        <mxCell id="matrix-title" value="CONTROL COMPARISON - PROPOSED TARGETS, NOT CERTIFICATION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#b71c1c;" vertex="1" parent="1">
+          <mxGeometry x="350" y="940" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="matrix" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="100" y="980" width="1200" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="mh" value="Control Domain | Prototype target | Production target" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#ffcdd2;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=11;align=left;spacingLeft=5;fontStyle=1;" vertex="1" parent="matrix">
+          <mxGeometry y="30" width="1200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="mr1" value="Identity | Firebase Auth + JWT | Entra ID + MFA + Conditional Access" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="matrix">
+          <mxGeometry y="60" width="1200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="mr2" value="Secrets | Render/GitHub secrets | Azure Key Vault (HSM design to confirm)" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="matrix">
+          <mxGeometry y="85" width="1200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="mr3" value="Encryption at rest | Supabase provider encryption | Azure TDE + customer-managed keys" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="matrix">
+          <mxGeometry y="110" width="1200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="mr4" value="Network | Public endpoints; verify protections | Azure VNet + Private Link; validate topology" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="matrix">
+          <mxGeometry y="135" width="1200" height="25" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
