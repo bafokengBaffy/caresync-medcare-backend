@@ -1,0 +1,119 @@
+envVarGroups:
+  - name: caresync-firebase
+    envVars:
+      - key: FIREBASE_ENABLED
+        value: "true"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY_ID
+        sync: false
+      - key: FIREBASE_CLIENT_ID
+        sync: false
+
+  - name: caresync-database
+    envVars:
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SUPABASE_DB_USER
+        sync: false
+      - key: SUPABASE_DB_PASSWORD
+        sync: false
+
+  - name: caresync-storage
+    envVars:
+      - key: SUPABASE_S3_ENABLED
+        value: "true"
+      - key: SUPABASE_S3_ENDPOINT
+        sync: false
+      - key: SUPABASE_S3_ACCESS_KEY
+        sync: false
+      - key: SUPABASE_S3_SECRET_KEY
+        sync: false
+      - key: SUPABASE_S3_REGION
+        value: us-east-1
+      - key: SUPABASE_S3_BUCKET
+        sync: false
+
+services:
+  - type: web
+    name: caresync-api-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-firebase
+      - key: SERVICE_NAME
+        value: caresync-api-gateway
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: ALLOWED_ORIGINS
+        value: https://caresync-medcare-9e0a5.web.app,https://caresync-medcare-9e0a5.firebaseapp.com
+      - key: PATIENT_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-patient-service
+          property: host
+      - key: CLINICAL_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-clinical-service
+          property: host
+      - key: BILLING_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-billing-service
+          property: host
+
+  - type: web
+    name: caresync-patient-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - fromGroup: caresync-storage
+      - key: SERVICE_NAME
+        value: caresync-patient-service
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+  - type: web
+    name: caresync-clinical-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - key: SERVICE_NAME
+        value: caresync-clinical-service
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: FIRESTORE_ENABLED
+        value: "true"
+
+  - type: web
+    name: caresync-billing-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - key: SERVICE_NAME
+        value: caresync-billing-service
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod

@@ -1,5 +1,3 @@
-server:
-  port: ${PORT:8081}
 caresync:
   firebase:
-    enabled: ${FIREBASE_ENABLED:false}
+    enabled: ${FIREBASE_ENABLED:true}

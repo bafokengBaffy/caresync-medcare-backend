@@ -1,7 +1,12 @@
+.git/
+.idea/
+*.iml
 .env
 .env.*
-**/target
-**/logs
-**/.git
+target/
+**/target/
+**/.env
+**/.env.*
+**/logs/
 **/*.log
 **/*.jar

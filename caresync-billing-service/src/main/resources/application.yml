@@ -1,17 +1,28 @@
 server:
-  port: ${PORT:8083}
+  port: ${PORT:8080}
 caresync:
   firebase:
-    enabled: ${FIREBASE_ENABLED:false}
+    enabled: ${FIREBASE_ENABLED:true}
+  storage:
+    enabled: ${SUPABASE_S3_ENABLED:false}
+    endpoint: ${SUPABASE_S3_ENDPOINT:}
+    region: ${SUPABASE_S3_REGION:us-east-1}
+    access-key: ${SUPABASE_S3_ACCESS_KEY:}
+    secret-key: ${SUPABASE_S3_SECRET_KEY:}
+    bucket: ${SUPABASE_S3_BUCKET:caresync bucket}
 spring:
+  profiles:
+    default: local
   application:
     name: caresync-billing-service
   datasource:
-    url: ${SUPABASE_DB_URL:${SPRING_DATASOURCE_URL}}
-    username: ${SUPABASE_DB_USER:${SPRING_DATASOURCE_USERNAME}}
-    password: ${SUPABASE_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
+    url: ${DB_URL:${SUPABASE_DB_URL}}
+    username: ${DB_USER:${SUPABASE_DB_USER}}
+    password: ${DB_PASSWORD:${SUPABASE_DB_PASSWORD}}
     hikari:
       maximum-pool-size: 5
+      data-source-properties:
+        sslmode: require
   jpa:
     hibernate:
       ddl-auto: validate

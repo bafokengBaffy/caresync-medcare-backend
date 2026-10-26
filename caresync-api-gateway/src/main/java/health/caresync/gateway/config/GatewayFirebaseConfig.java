@@ -6,6 +6,8 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,10 +22,18 @@ public class GatewayFirebaseConfig {
         if (!FirebaseApp.getApps().isEmpty()) {
             return FirebaseApp.getInstance();
         }
+        String credentialsPath = firstNonBlank(
+            System.getenv("FIREBASE_CREDENTIALS_PATH"),
+            System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        );
         String privateKey = System.getenv("FIREBASE_PRIVATE_KEY");
         String clientEmail = System.getenv("FIREBASE_CLIENT_EMAIL");
         GoogleCredentials credentials;
-        if (hasText(privateKey) || hasText(clientEmail)) {
+        if (hasText(credentialsPath)) {
+            try (var input = Files.newInputStream(Path.of(credentialsPath))) {
+                credentials = GoogleCredentials.fromStream(input);
+            }
+        } else if (hasText(privateKey) || hasText(clientEmail)) {
             if (!hasText(privateKey) || !hasText(clientEmail)) {
                 throw new IllegalStateException(
                     "FIREBASE_PRIVATE_KEY and FIREBASE_CLIENT_EMAIL must both be configured"
@@ -56,6 +66,10 @@ public class GatewayFirebaseConfig {
 
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        return hasText(first) ? first : second;
     }
 
     private static void addIfPresent(Map<String, String> values, String key, String value) {
