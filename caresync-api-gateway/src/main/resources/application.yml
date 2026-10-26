@@ -1,0 +1,18 @@
+server:
+  port: ${PORT:8080}
+caresync:
+  firebase:
+    enabled: ${FIREBASE_ENABLED:false}
+  gateway:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+spring:
+  application:
+    name: caresync-api-gateway
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+logging:
+  level:
+    root: INFO

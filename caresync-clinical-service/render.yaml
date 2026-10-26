@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: caresync-clinical-service
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health

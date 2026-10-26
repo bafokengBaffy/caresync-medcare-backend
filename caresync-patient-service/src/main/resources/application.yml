@@ -1,0 +1,26 @@
+server:
+  port: ${PORT:8081}
+caresync:
+  firebase:
+    enabled: ${FIREBASE_ENABLED:false}
+spring:
+  application:
+    name: caresync-patient-service
+  datasource:
+    url: ${SUPABASE_DB_URL:${SPRING_DATASOURCE_URL}}
+    username: ${SUPABASE_DB_USER:${SPRING_DATASOURCE_USERNAME}}
+    password: ${SUPABASE_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
