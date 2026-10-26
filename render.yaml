@@ -25,18 +25,14 @@ envVarGroups:
 
   - name: caresync-storage
     envVars:
-      - key: SUPABASE_S3_ENABLED
+      - key: SUPABASE_STORAGE_ENABLED
         value: "true"
-      - key: SUPABASE_S3_ENDPOINT
+      - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_S3_ACCESS_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: SUPABASE_S3_SECRET_KEY
-        sync: false
-      - key: SUPABASE_S3_REGION
-        value: us-east-1
-      - key: SUPABASE_S3_BUCKET
-        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: caresync-bucket
 
 services:
   - type: web

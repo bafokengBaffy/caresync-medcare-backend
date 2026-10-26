@@ -28,12 +28,10 @@ caresync:
   firebase:
     enabled: ${FIREBASE_ENABLED:true}
   storage:
-    enabled: ${SUPABASE_S3_ENABLED:false}
-    endpoint: ${SUPABASE_S3_ENDPOINT:}
-    region: ${SUPABASE_S3_REGION:us-east-1}
-    access-key: ${SUPABASE_S3_ACCESS_KEY:}
-    secret-key: ${SUPABASE_S3_SECRET_KEY:}
-    bucket: ${SUPABASE_S3_BUCKET:caresync bucket}
+    enabled: ${SUPABASE_STORAGE_ENABLED:false}
+    url: ${SUPABASE_URL:}
+    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+    bucket: ${SUPABASE_STORAGE_BUCKET:caresync-bucket}
 management:
   endpoints:
     web:

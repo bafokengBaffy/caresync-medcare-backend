@@ -1,71 +1,172 @@
 package health.caresync.patient.storage;
 
-import health.caresync.common.security.TenantContext;
+import health.caresync.common.exception.NotFoundException;
 import health.caresync.common.exception.ValidationException;
+import health.caresync.common.tenant.TenantRlsContext;
+import health.caresync.patient.domain.entity.PatientDocument;
+import health.caresync.patient.domain.repository.PatientDocumentRepository;
+import health.caresync.patient.dto.PatientDocumentResponse;
 import health.caresync.patient.service.PatientService;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
 @ConditionalOnProperty(name = "caresync.storage.enabled", havingValue = "true")
 public class PatientDocumentStorageService {
     private static final long MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+    private static final int MAX_FILE_NAME_LENGTH = 255;
+    private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
-    private final S3Client s3Client;
+    private final SupabaseStorageClient storageClient;
     private final String bucket;
     private final PatientService patientService;
+    private final PatientDocumentRepository documentRepository;
+    private final TenantRlsContext tenantRlsContext;
 
     public PatientDocumentStorageService(
-        S3Client s3Client,
-        @Value("${caresync.storage.bucket:caresync bucket}") String supabaseStorageBucket,
-        PatientService patientService
+        SupabaseStorageClient storageClient,
+        @Value("${caresync.storage.bucket:caresync-bucket}") String bucket,
+        PatientService patientService,
+        PatientDocumentRepository documentRepository,
+        TenantRlsContext tenantRlsContext
     ) {
-        this.s3Client = s3Client;
-        this.bucket = supabaseStorageBucket;
-        this.patientService = patientService;
+        this.storageClient = Objects.requireNonNull(storageClient);
+        this.bucket = Objects.requireNonNull(bucket);
+        this.patientService = Objects.requireNonNull(patientService);
+        this.documentRepository = Objects.requireNonNull(documentRepository);
+        this.tenantRlsContext = Objects.requireNonNull(tenantRlsContext);
     }
 
-    public UUID upload(UUID patientId, MultipartFile file) throws IOException {
+    @Transactional
+    public PatientDocumentResponse upload(UUID patientId, MultipartFile file) throws IOException {
         patientService.get(patientId);
         if (file.isEmpty() || file.getSize() > MAX_DOCUMENT_BYTES) {
             throw new ValidationException("Document must be non-empty and no larger than 10 MiB");
         }
-        UUID objectId = UUID.randomUUID();
-        String key = objectKey(patientId, objectId);
-        String contentType = file.getContentType();
-        s3Client.putObject(
-            PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(key)
-                .contentType(contentType == null ? "application/octet-stream" : contentType)
-                .build(),
-            RequestBody.fromBytes(file.getBytes())
-        );
-        return objectId;
-    }
 
-    public StoredDocument download(UUID patientId, UUID objectId) throws IOException {
-        patientService.get(patientId);
-        try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(
-            GetObjectRequest.builder().bucket(bucket).key(objectKey(patientId, objectId)).build()
-        )) {
-            return new StoredDocument(response.readAllBytes(), response.response().contentType());
+        UUID tenantId = tenantRlsContext.apply();
+        UUID documentId = UUID.randomUUID();
+        String fileName = cleanFileName(file.getOriginalFilename());
+        String contentType = file.getContentType() == null || file.getContentType().isBlank()
+            ? DEFAULT_CONTENT_TYPE
+            : file.getContentType();
+        String objectKey = objectKey(tenantId, patientId, documentId);
+        String mediaUrl = mediaUrl(patientId, documentId);
+
+        storageClient.upload(bucket, objectKey, contentType, file.getBytes());
+        try {
+            PatientDocument document = documentRepository.saveAndFlush(new PatientDocument(
+                documentId,
+                patientId,
+                fileName,
+                contentType,
+                file.getSize(),
+                mediaUrl,
+                Instant.now()
+            ));
+            return toResponse(document);
+        } catch (RuntimeException databaseFailure) {
+            try {
+                storageClient.delete(bucket, objectKey);
+            } catch (RuntimeException storageCleanupFailure) {
+                databaseFailure.addSuppressed(storageCleanupFailure);
+            }
+            throw databaseFailure;
         }
     }
 
-    private static String objectKey(UUID patientId, UUID objectId) {
-        return TenantContext.require() + "/patients/" + patientId + "/" + objectId;
+    @Transactional(readOnly = true)
+    public List<PatientDocumentResponse> list(UUID patientId) {
+        patientService.get(patientId);
+        UUID tenantId = tenantRlsContext.apply();
+        return documentRepository.findAllByTenantIdAndPatientIdOrderByUploadedAtDesc(tenantId, patientId)
+            .stream()
+            .map(PatientDocumentStorageService::toResponse)
+            .toList();
     }
 
-    public record StoredDocument(byte[] content, String contentType) { }
+    @Transactional(readOnly = true)
+    public StoredDocument download(UUID patientId, UUID documentId) {
+        patientService.get(patientId);
+        UUID tenantId = tenantRlsContext.apply();
+        PatientDocument document = findDocument(tenantId, patientId, documentId);
+        SupabaseStorageClient.StoredObject storedObject = storageClient.download(
+            bucket,
+            objectKey(tenantId, patientId, documentId)
+        );
+        return new StoredDocument(
+            storedObject.content(),
+            safeContentType(document.getContentType()),
+            document.getFileName()
+        );
+    }
+
+    @Transactional
+    public void delete(UUID patientId, UUID documentId) {
+        patientService.get(patientId);
+        UUID tenantId = tenantRlsContext.apply();
+        findDocument(tenantId, patientId, documentId);
+        storageClient.delete(bucket, objectKey(tenantId, patientId, documentId));
+        documentRepository.deleteById(documentId);
+    }
+
+    private PatientDocument findDocument(UUID tenantId, UUID patientId, UUID documentId) {
+        return documentRepository.findByIdAndTenantIdAndPatientId(documentId, tenantId, patientId)
+            .orElseThrow(() -> new NotFoundException("Patient document not found"));
+    }
+
+    private static PatientDocumentResponse toResponse(PatientDocument document) {
+        return new PatientDocumentResponse(
+            document.getId(),
+            document.getFileName(),
+            document.getContentType(),
+            document.getSizeBytes(),
+            document.getUploadedAt(),
+            document.getMediaUrl()
+        );
+    }
+
+    private static String objectKey(UUID tenantId, UUID patientId, UUID documentId) {
+        return tenantId + "/patients/" + patientId + "/documents/" + documentId;
+    }
+
+    private static String mediaUrl(UUID patientId, UUID documentId) {
+        return "/api/v1/patients/" + patientId + "/documents/" + documentId + "/content";
+    }
+
+    private static String safeContentType(String contentType) {
+        if ("application/pdf".equalsIgnoreCase(contentType)
+            || "image/jpeg".equalsIgnoreCase(contentType)
+            || "image/png".equalsIgnoreCase(contentType)
+            || "image/gif".equalsIgnoreCase(contentType)
+            || "image/webp".equalsIgnoreCase(contentType)
+            || "image/avif".equalsIgnoreCase(contentType)) {
+            return contentType;
+        }
+        return DEFAULT_CONTENT_TYPE;
+    }
+
+    private static String cleanFileName(String fileName) {
+        String normalized = fileName == null ? "document" : fileName.replace('\\', '/');
+        int lastSeparator = normalized.lastIndexOf('/');
+        String cleanName = normalized.substring(lastSeparator + 1)
+            .replaceAll("[\\p{Cntrl}]", "_")
+            .trim();
+        if (cleanName.isBlank()) {
+            return "document";
+        }
+        return cleanName.length() <= MAX_FILE_NAME_LENGTH
+            ? cleanName
+            : cleanName.substring(cleanName.length() - MAX_FILE_NAME_LENGTH);
+    }
+
+    public record StoredDocument(byte[] content, String contentType, String fileName) { }
 }
