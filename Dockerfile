@@ -1,4 +1,4 @@
-FROM maven:3.9.16-eclipse-temurin-25 AS build
+FROM maven:3.9.16-eclipse-temurin-21-alpine AS build
 WORKDIR /workspace
 
 ARG SERVICE_NAME=caresync-api-gateway
@@ -24,7 +24,7 @@ COPY caresync-patient-service caresync-patient-service
 
 RUN mvn -B -ntp -DskipTests -pl "$SERVICE_NAME" -am package
 
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 ARG SERVICE_NAME=caresync-api-gateway
