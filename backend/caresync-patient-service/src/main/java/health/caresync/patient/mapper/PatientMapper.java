@@ -8,5 +8,8 @@ public interface PatientMapper {
     PatientResponse toResponse(Patient p);
     PatientSummaryResponse toSummary(Patient p);
     @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "mergedIntoPatientId", ignore = true)
+    @Mapping(target = "mergedAt", ignore = true)
+    @Mapping(target = "version", ignore = true)
     Patient toEntity(PatientCreateRequest req);
 }

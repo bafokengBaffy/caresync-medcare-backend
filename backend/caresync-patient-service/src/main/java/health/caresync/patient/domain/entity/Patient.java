@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -43,6 +44,15 @@ public class Patient implements TenantAware {
 
     @Column(name = "emergency_contact_phone")
     private String emergencyContactPhone;
+
+    @Column(name = "merged_into_patient_id")
+    private UUID mergedIntoPatientId;
+
+    @Column(name = "merged_at")
+    private Instant mergedAt;
+
+    @Version
+    private long version;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
@@ -142,5 +152,25 @@ public class Patient implements TenantAware {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public UUID getMergedIntoPatientId() {
+        return mergedIntoPatientId;
+    }
+
+    public void setMergedIntoPatientId(UUID mergedIntoPatientId) {
+        this.mergedIntoPatientId = mergedIntoPatientId;
+    }
+
+    public Instant getMergedAt() {
+        return mergedAt;
+    }
+
+    public void setMergedAt(Instant mergedAt) {
+        this.mergedAt = mergedAt;
+    }
+
+    public long getVersion() {
+        return version;
     }
 }

@@ -12,7 +12,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 @Configuration
 public class CorsConfig {
     @Bean
-    CorsWebFilter corsWebFilter(
+    public CorsWebFilter corsWebFilter(
         @Value("${caresync.gateway.allowed-origins:http://localhost:5173}") String allowedOrigins
     ) {
         List<String> origins = Arrays.stream(allowedOrigins.split(","))

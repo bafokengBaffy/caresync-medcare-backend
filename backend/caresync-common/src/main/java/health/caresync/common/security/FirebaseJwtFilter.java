@@ -1,5 +1,4 @@
 package health.caresync.common.security;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseToken;
 import com.google.firebase.auth.FirebaseAuthException;
 import jakarta.servlet.FilterChain;
@@ -11,13 +10,22 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class FirebaseJwtFilter extends OncePerRequestFilter {
     private static final Set<String> ALLOWED_ROLES =
-        Set.of("ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER");
+        Set.of(
+            "ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
+            "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER", "RECEPTIONIST"
+        );
+    private static final Pattern PERMISSION_FORMAT = Pattern.compile("[A-Z][A-Z0-9_]{1,63}");
+    private static final int MAX_PERMISSIONS = 100;
 
     private final FirebaseTokenVerifier tokenVerifier;
 
@@ -58,11 +66,15 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
             String specialty = token.getClaims().get(JwtClaims.SPECIALTY) instanceof String value
                 ? value
                 : "";
+            Set<String> permissions = parsePermissions(token.getClaims().get(JwtClaims.PERMISSIONS));
             CaresyncPrincipal principal = new CaresyncPrincipal(
                 token.getUid(), tenantId, role, specialty, token.getEmail()
             );
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+            permissions.stream().map(SimpleGrantedAuthority::new).forEach(authorities::add);
             var authentication = new UsernamePasswordAuthenticationToken(
-                principal, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                principal, null, authorities
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (FirebaseAuthException | IllegalArgumentException | IllegalStateException e) {
@@ -72,5 +84,23 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    private Set<String> parsePermissions(Object claim) {
+        if (claim == null) {
+            return Set.of();
+        }
+        if (!(claim instanceof Collection<?> values) || values.size() > MAX_PERMISSIONS) {
+            throw new IllegalArgumentException("Invalid permissions claim");
+        }
+        Set<String> permissions = new HashSet<>();
+        for (Object value : values) {
+            if (!(value instanceof String permission)
+                || !PERMISSION_FORMAT.matcher(permission).matches()) {
+                throw new IllegalArgumentException("Invalid permissions claim");
+            }
+            permissions.add(permission);
+        }
+        return Set.copyOf(permissions);
     }
 }

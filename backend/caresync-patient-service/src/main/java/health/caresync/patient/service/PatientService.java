@@ -41,7 +41,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public PatientResponse get(UUID id) {
         UUID tenantId = tenantRlsContext.apply();
-        return repo.findByIdAndTenantId(id, tenantId)
+        return repo.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
             .map(mapper::toResponse)
             .orElseThrow(() -> new NotFoundException("Patient not found"));
     }
@@ -49,7 +49,7 @@ public class PatientService {
     @Transactional
     public PatientResponse update(UUID id, PatientUpdateRequest request) {
         UUID tenantId = tenantRlsContext.apply();
-        Patient patient = repo.findByIdAndTenantId(id, tenantId)
+        Patient patient = repo.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
             .orElseThrow(() -> new NotFoundException("Patient not found"));
 
         if (request.email() != null && !request.email().isBlank()

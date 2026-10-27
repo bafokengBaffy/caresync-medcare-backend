@@ -1,12 +1,6 @@
 envVarGroups:
-  - name: caresync-runtime
+  - name: caresync-firebase
     envVars:
-      - key: SUPABASE_DB_URL
-        sync: false
-      - key: SUPABASE_DB_USER
-        sync: false
-      - key: SUPABASE_DB_PASSWORD
-        sync: false
       - key: FIREBASE_ENABLED
         value: "true"
       - key: FIREBASE_PROJECT_ID
@@ -19,21 +13,47 @@ envVarGroups:
         sync: false
       - key: FIREBASE_CLIENT_ID
         sync: false
+      - key: FIREBASE_BOOTSTRAP_ADMIN_EMAIL
+        value: baffkay20@gmail.com
+      - key: FIREBASE_BOOTSTRAP_ADMIN_TENANT_SUBDOMAIN
+        value: caresync
+
+  - name: caresync-database
+    envVars:
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SUPABASE_DB_USER
+        sync: false
+      - key: SUPABASE_DB_PASSWORD
+        sync: false
+
+  - name: caresync-storage
+    envVars:
+      - key: SUPABASE_STORAGE_ENABLED
+        value: "true"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: caresync-bucket
 
 services:
   - type: web
     name: caresync-api-gateway
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/caresync-api-gateway/Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
-      - fromGroup: caresync-runtime
+      - fromGroup: caresync-firebase
+      - key: SERVICE_NAME
+        value: caresync-api-gateway
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://caresync-medcare-9e0a5.web.app,https://caresync-medcare-9e0a5.firebaseapp.com
       - key: PATIENT_SERVICE_URL
         fromService:
           type: web
@@ -54,11 +74,15 @@ services:
     name: caresync-patient-service
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/caresync-patient-service/Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
-      - fromGroup: caresync-runtime
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - fromGroup: caresync-storage
+      - key: SERVICE_NAME
+        value: caresync-patient-service
       - key: SPRING_PROFILES_ACTIVE
         value: prod
 
@@ -66,22 +90,30 @@ services:
     name: caresync-clinical-service
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/caresync-clinical-service/Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
-      - fromGroup: caresync-runtime
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - key: SERVICE_NAME
+        value: caresync-clinical-service
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: FIRESTORE_ENABLED
+        value: "true"
 
   - type: web
     name: caresync-billing-service
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/caresync-billing-service/Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
-      - fromGroup: caresync-runtime
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - key: SERVICE_NAME
+        value: caresync-billing-service
       - key: SPRING_PROFILES_ACTIVE
         value: prod

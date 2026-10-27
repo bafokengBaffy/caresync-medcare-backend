@@ -8,11 +8,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 public interface PatientRepository extends JpaRepository<Patient, UUID>, JpaSpecificationExecutor<Patient> {
     Optional<Patient> findByIdAndTenantId(UUID id, UUID tenantId);
+    Optional<Patient> findByIdAndTenantIdAndMergedIntoPatientIdIsNull(UUID id, UUID tenantId);
+    boolean existsByIdAndTenantId(UUID id, UUID tenantId);
+    Page<Patient> findAllByTenantIdAndMergedIntoPatientIdIsNull(UUID tenantId, Pageable pageable);
     boolean existsByTenantIdAndEmailIgnoreCase(UUID tenantId, String email);
     List<Patient> findAllByTenantId(UUID tenantId);
     @Query("""
         select p from Patient p
         where p.tenantId = :tenantId
+          and p.mergedIntoPatientId is null
           and (:query = '' or lower(p.firstName) like lower(concat('%', :query, '%'))
                or lower(p.lastName) like lower(concat('%', :query, '%'))
                or lower(coalesce(p.email, '')) like lower(concat('%', :query, '%'))

@@ -25,11 +25,9 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
-        if (exchange.getRequest().getMethod() != null
-            && exchange.getRequest().getMethod().matches("OPTIONS")
-            || path.startsWith("/actuator/health")
-            || path.startsWith("/v3/api-docs")
-            || path.startsWith("/swagger-ui")) {
+        if ((exchange.getRequest().getMethod() != null
+            && exchange.getRequest().getMethod().matches("OPTIONS"))
+            || isPublicPath(path)) {
             return chain.filter(exchange);
         }
 
@@ -53,6 +51,10 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
         GatewayFilterChain chain,
         VerifiedIdentity identity
     ) {
+        if (identity == null || identity.userId() == null || identity.userId().isBlank()) {
+            return unauthorized(exchange);
+        }
+
         String tenantText = identity.tenantId();
         String role = identity.role();
         if (tenantText == null
@@ -68,7 +70,7 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
-        String specialty = identity.specialty();
+        String specialty = identity.specialty() == null ? "" : identity.specialty();
         var request = exchange.getRequest().mutate().headers(headers -> {
             headers.remove("X-Tenant-Id");
             headers.remove("X-User-Id");
@@ -85,6 +87,17 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
     private Mono<Void> unauthorized(ServerWebExchange exchange) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         return exchange.getResponse().setComplete();
+    }
+
+    private boolean isPublicPath(String path) {
+        return isPathOrChild(path, "/actuator/health")
+            || isPathOrChild(path, "/v3/api-docs")
+            || path.equals("/swagger-ui.html")
+            || isPathOrChild(path, "/swagger-ui");
+    }
+
+    private boolean isPathOrChild(String path, String publicPath) {
+        return path.equals(publicPath) || path.startsWith(publicPath + "/");
     }
 
     @Override

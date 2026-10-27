@@ -11,11 +11,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootApplication
 @ComponentScan({"health.caresync.patient", "health.caresync.common"})
 @EnableJpaAuditing
+@EnableScheduling
 public class PatientServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(PatientServiceApplication.class, args);

@@ -21,12 +21,13 @@ class PatientServiceTest {
         PatientRepository repository = org.mockito.Mockito.mock(PatientRepository.class);
         TenantRlsContext tenantContext = org.mockito.Mockito.mock(TenantRlsContext.class);
         when(tenantContext.apply()).thenReturn(tenantId);
-        when(repository.findByIdAndTenantId(patientId, tenantId)).thenReturn(Optional.empty());
+        when(repository.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(patientId, tenantId))
+            .thenReturn(Optional.empty());
         PatientService service = new PatientService(
             repository, org.mockito.Mockito.mock(PatientMapper.class), tenantContext
         );
 
         assertThrows(NotFoundException.class, () -> service.get(patientId));
-        verify(repository).findByIdAndTenantId(patientId, tenantId);
+        verify(repository).findByIdAndTenantIdAndMergedIntoPatientIdIsNull(patientId, tenantId);
     }
 }
