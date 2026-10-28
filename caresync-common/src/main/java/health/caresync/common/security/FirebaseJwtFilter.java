@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 public class FirebaseJwtFilter extends OncePerRequestFilter {
     private static final Set<String> ALLOWED_ROLES =
         Set.of(
-            "ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
+            "SUPER_ADMIN", "TENANT_ADMIN", "PATIENT", "ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
             "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER", "RECEPTIONIST"
         );
     private static final Pattern PERMISSION_FORMAT = Pattern.compile("[A-Z][A-Z0-9_]{1,63}");
@@ -58,7 +58,8 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
                 ? value
                 : null;
             boolean provisioningRequest = request.getRequestURI().equals("/api/v1/auth/sync");
-            if (tenantClaim == null || role == null || !ALLOWED_ROLES.contains(role)) {
+            boolean superAdmin = "SUPER_ADMIN".equals(role);
+            if ((tenantClaim == null && !superAdmin) || role == null || !ALLOWED_ROLES.contains(role)) {
                 if (!provisioningRequest || tenantClaim != null || role != null) {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
                     return;
@@ -74,7 +75,7 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
                 return;
             }
 
-            UUID tenantId = UUID.fromString(tenantClaim);
+            UUID tenantId = tenantClaim == null ? null : UUID.fromString(tenantClaim);
             String specialty = token.getClaims().get(JwtClaims.SPECIALTY) instanceof String value
                 ? value
                 : "";

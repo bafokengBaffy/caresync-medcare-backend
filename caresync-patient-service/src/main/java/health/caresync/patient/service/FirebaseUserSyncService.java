@@ -47,6 +47,7 @@ public class FirebaseUserSyncService {
     private final TenantRepository tenants;
     private final JdbcTemplate jdbcTemplate;
     private final Set<String> bootstrapAdminEmails;
+    private final Set<String> superAdminEmails;
     private final String bootstrapAdminTenantSubdomain;
 
     public FirebaseUserSyncService(
@@ -54,12 +55,17 @@ public class FirebaseUserSyncService {
         TenantRepository tenants,
         JdbcTemplate jdbcTemplate,
         @Value("${caresync.firebase.bootstrap-admin-email:}") String bootstrapAdminEmail,
+        @Value("${caresync.firebase.super-admin-email:}") String superAdminEmail,
         @Value("${caresync.firebase.bootstrap-admin-tenant-subdomain:caresync}") String bootstrapAdminTenantSubdomain
     ) {
         this.firebaseAuth = firebaseAuth;
         this.tenants = tenants;
         this.jdbcTemplate = jdbcTemplate;
         this.bootstrapAdminEmails = Arrays.stream(bootstrapAdminEmail == null ? new String[0] : bootstrapAdminEmail.split(","))
+            .map(FirebaseUserSyncService::normalizeEmail)
+            .filter(email -> !email.isBlank())
+            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        this.superAdminEmails = Arrays.stream(superAdminEmail == null ? new String[0] : superAdminEmail.split(","))
             .map(FirebaseUserSyncService::normalizeEmail)
             .filter(email -> !email.isBlank())
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -74,7 +80,13 @@ public class FirebaseUserSyncService {
         String role = stringClaim(claims.get("role"));
         String specialty = stringClaim(claims.get("specialty"));
 
-        if (isBootstrapAdmin(user)) {
+        if (isSuperAdmin(user)) {
+            role = "SUPER_ADMIN";
+            tenantId = null;
+            claims.put("role", role);
+            claims.remove("tenant_id");
+            firebaseAuth.setCustomUserClaims(uid, claims);
+        } else if (isBootstrapAdmin(user)) {
             tenantId = bootstrapAdminTenantId(tenantId,
                 tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()), user);
             if (tenantId == null) {
@@ -88,7 +100,7 @@ public class FirebaseUserSyncService {
 
         writeBatch(List.of(new SyncUser(uid, normalizeEmail(user.getEmail() == null ? email : user.getEmail()),
             role, tenantId, user.isDisabled())));
-        if (tenantId == null || role == null) {
+        if (role == null || (!"SUPER_ADMIN".equals(role) && tenantId == null)) {
             return new ProvisionedUser(null, null, null);
         }
         return new ProvisionedUser(tenantId, role, specialty);
@@ -108,7 +120,16 @@ public class FirebaseUserSyncService {
                 Map<String, Object> claims = new HashMap<>(user.getCustomClaims());
                 UUID tenantId = tenantId(claims.get("tenant_id"), existingTenants);
                 String role = stringClaim(claims.get("role"));
-                if (isBootstrapAdmin(user)) {
+                if (isSuperAdmin(user)) {
+                    boolean claimsChanged = !"SUPER_ADMIN".equals(role) || claims.containsKey("tenant_id");
+                    if (claimsChanged) {
+                        claims.put("role", "SUPER_ADMIN");
+                        claims.remove("tenant_id");
+                        firebaseAuth.setCustomUserClaims(user.getUid(), claims);
+                    }
+                    role = "SUPER_ADMIN";
+                    tenantId = null;
+                } else if (isBootstrapAdmin(user)) {
                     UUID adminTenantId = bootstrapAdminTenantId(tenantId, existingTenants, user);
                     if (adminTenantId != null) {
                         boolean claimsChanged = !"ADMIN".equals(role)
@@ -181,6 +202,12 @@ public class FirebaseUserSyncService {
         } catch (IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    private boolean isSuperAdmin(UserRecord user) {
+        return !superAdminEmails.isEmpty()
+            && user.isEmailVerified()
+            && superAdminEmails.contains(normalizeEmail(user.getEmail()));
     }
 
     private boolean isBootstrapAdmin(UserRecord user) {
