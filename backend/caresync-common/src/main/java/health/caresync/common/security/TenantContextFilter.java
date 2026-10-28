@@ -21,7 +21,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
             if (authentication != null
                 && authentication.isAuthenticated()
                 && authentication.getPrincipal() instanceof CaresyncPrincipal principal) {
-                TenantContext.set(principal.tenantId());
+                if (principal.tenantId() != null) {
+                    TenantContext.set(principal.tenantId());
+                }
             }
             chain.doFilter(request, response);
         } finally {
