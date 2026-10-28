@@ -14,6 +14,7 @@ public class GatewayRoutesConfig {
         return b.routes()
             .route("patients",  r -> r.path(
                 "/api/v1/patients/**",
+                "/api/v1/tenants/*/patients/**",
                 "/api/v1/providers/**",
                 "/api/v1/admin/**",
                 "/api/v1/auth/**"
