@@ -14,7 +14,7 @@ public class AuditLog {
     @Column(name = "resource_id",  nullable = false) private String resourceId;
     @Column(name = "delta", columnDefinition = "text")
     private String delta;
-    @Column(name = "ip_address") private String ipAddress;
+    @Column(name = "ip_address", length = 255) private String ipAddress;
     @Column(name = "user_agent") private String userAgent;
     @Column(name = "request_id") private String requestId;
     @Column(name = "created_at") private Instant createdAt;
