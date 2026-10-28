@@ -29,7 +29,8 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
             && exchange.getRequest().getMethod().matches("OPTIONS")
             || path.startsWith("/actuator/health")
             || path.startsWith("/v3/api-docs")
-            || path.startsWith("/swagger-ui")) {
+            || path.startsWith("/swagger-ui")
+            || path.equals("/api/v1/auth/sync")) {
             return chain.filter(exchange);
         }
 
