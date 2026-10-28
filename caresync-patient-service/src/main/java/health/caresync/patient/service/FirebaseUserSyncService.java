@@ -3,17 +3,24 @@ package health.caresync.patient.service;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.ListUsersPage;
-import health.caresync.common.exception.ValidationException;
+import com.google.firebase.auth.UserRecord;
+import health.caresync.patient.domain.entity.Tenant;
 import health.caresync.patient.domain.repository.TenantRepository;
 import health.caresync.patient.dto.FirebaseUserSyncResponse;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,15 +45,52 @@ public class FirebaseUserSyncService {
     private final FirebaseAuth firebaseAuth;
     private final TenantRepository tenants;
     private final JdbcTemplate jdbcTemplate;
+    private final Set<String> bootstrapAdminEmails;
+    private final String bootstrapAdminTenantSubdomain;
 
     public FirebaseUserSyncService(
         FirebaseAuth firebaseAuth,
         TenantRepository tenants,
-        JdbcTemplate jdbcTemplate
+        JdbcTemplate jdbcTemplate,
+        @Value("${caresync.firebase.bootstrap-admin-email:}") String bootstrapAdminEmail,
+        @Value("${caresync.firebase.bootstrap-admin-tenant-subdomain:caresync}") String bootstrapAdminTenantSubdomain
     ) {
         this.firebaseAuth = firebaseAuth;
         this.tenants = tenants;
         this.jdbcTemplate = jdbcTemplate;
+        this.bootstrapAdminEmails = Arrays.stream(bootstrapAdminEmail == null ? new String[0] : bootstrapAdminEmail.split(","))
+            .map(FirebaseUserSyncService::normalizeEmail)
+            .filter(email -> !email.isBlank())
+            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        this.bootstrapAdminTenantSubdomain = bootstrapAdminTenantSubdomain;
+    }
+
+    public ProvisionedUser provisionCurrentUser(String uid, String email) throws FirebaseAuthException {
+        UserRecord user = firebaseAuth.getUser(uid);
+        Map<String, Object> claims = new HashMap<>(user.getCustomClaims());
+        UUID tenantId = tenantId(claims.get("tenant_id"), tenants.findAll().stream()
+            .map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()));
+        String role = stringClaim(claims.get("role"));
+        String specialty = stringClaim(claims.get("specialty"));
+
+        if (isBootstrapAdmin(user)) {
+            tenantId = bootstrapAdminTenantId(tenantId,
+                tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()), user);
+            if (tenantId == null) {
+                throw new IllegalStateException("CareSync tenant is not available for admin provisioning");
+            }
+            role = "ADMIN";
+            claims.put("role", role);
+            claims.put("tenant_id", tenantId.toString());
+            firebaseAuth.setCustomUserClaims(uid, claims);
+        }
+
+        writeBatch(List.of(new SyncUser(uid, normalizeEmail(user.getEmail() == null ? email : user.getEmail()),
+            role, tenantId, user.isDisabled())));
+        if (tenantId == null || role == null) {
+            return new ProvisionedUser(null, null, null);
+        }
+        return new ProvisionedUser(tenantId, role, specialty);
     }
 
     public FirebaseUserSyncResponse syncAllUsers() throws FirebaseAuthException {
@@ -60,12 +104,26 @@ public class FirebaseUserSyncService {
         while (page != null) {
             List<SyncUser> batch = new ArrayList<>();
             for (var user : page.getValues()) {
-                UUID tenantId = tenantId(user.getCustomClaims().get("tenant_id"), existingTenants);
+                Map<String, Object> claims = new HashMap<>(user.getCustomClaims());
+                UUID tenantId = tenantId(claims.get("tenant_id"), existingTenants);
+                String role = stringClaim(claims.get("role"));
+                if (isBootstrapAdmin(user)) {
+                    UUID adminTenantId = bootstrapAdminTenantId(tenantId, existingTenants, user);
+                    if (adminTenantId != null) {
+                        boolean claimsChanged = !"ADMIN".equals(role)
+                            || !adminTenantId.toString().equals(claims.get("tenant_id"));
+                        if (claimsChanged) {
+                            claims.put("role", "ADMIN");
+                            claims.put("tenant_id", adminTenantId.toString());
+                            firebaseAuth.setCustomUserClaims(user.getUid(), claims);
+                        }
+                        role = "ADMIN";
+                        tenantId = adminTenantId;
+                    }
+                }
                 if (tenantId == null) {
                     withoutTenant++;
                 }
-                Object claimRole = user.getCustomClaims().get("role");
-                String role = claimRole instanceof String value && !value.isBlank() ? value : null;
                 batch.add(new SyncUser(user.getUid(), user.getEmail(), role, tenantId, user.isDisabled()));
             }
             writeBatch(batch);
@@ -79,8 +137,8 @@ public class FirebaseUserSyncService {
     }
 
     @Scheduled(
-        fixedDelayString = "${caresync.firebase.user-sync-interval-ms:900000}",
-        initialDelayString = "${caresync.firebase.user-sync-initial-delay-ms:60000}"
+        fixedDelayString = "${caresync.firebase.user-sync-interval-ms:60000}",
+        initialDelayString = "${caresync.firebase.user-sync-initial-delay-ms:10000}"
     )
     public void scheduledSync() {
         try {
@@ -124,5 +182,37 @@ public class FirebaseUserSyncService {
         }
     }
 
+    private boolean isBootstrapAdmin(UserRecord user) {
+        return !bootstrapAdminEmails.isEmpty()
+            && user.isEmailVerified()
+            && bootstrapAdminEmails.contains(normalizeEmail(user.getEmail()));
+    }
+
+    private UUID bootstrapAdminTenantId(UUID claimedTenantId, Set<UUID> existingTenants, UserRecord user) {
+        if (claimedTenantId != null) {
+            return claimedTenantId;
+        }
+        return tenants.findBySubdomain(bootstrapAdminTenantSubdomain)
+            .map(Tenant::getId)
+            .filter(existingTenants::contains)
+            .orElseGet(() -> {
+                LOGGER.error(
+                    "Cannot bootstrap ADMIN claim for Firebase UID {}: tenant subdomain '{}' is not available",
+                    user.getUid(),
+                    bootstrapAdminTenantSubdomain
+                );
+                return null;
+            });
+    }
+
+    private static String stringClaim(Object claim) {
+        return claim instanceof String value && !value.isBlank() ? value : null;
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public record ProvisionedUser(UUID tenantId, String role, String specialty) { }
     private record SyncUser(String uid, String email, String role, UUID tenantId, boolean disabled) { }
 }

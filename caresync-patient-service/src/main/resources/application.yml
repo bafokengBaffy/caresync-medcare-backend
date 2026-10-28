@@ -27,6 +27,8 @@ spring:
 caresync:
   firebase:
     enabled: ${FIREBASE_ENABLED:true}
+    bootstrap-admin-email: ${FIREBASE_BOOTSTRAP_ADMIN_EMAIL:baffkay20@gmail.com,maribemaribe43@gmail.com,kokikoki@gmail.com}
+    bootstrap-admin-tenant-subdomain: ${FIREBASE_BOOTSTRAP_ADMIN_TENANT_SUBDOMAIN:caresync}
   storage:
     enabled: ${SUPABASE_STORAGE_ENABLED:false}
     url: ${SUPABASE_URL:}
