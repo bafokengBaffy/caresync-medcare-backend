@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Arrays;
@@ -192,17 +193,16 @@ public class FirebaseUserSyncService {
         if (claimedTenantId != null) {
             return claimedTenantId;
         }
-        return tenants.findBySubdomain(bootstrapAdminTenantSubdomain)
-            .map(Tenant::getId)
-            .filter(existingTenants::contains)
-            .orElseGet(() -> {
-                LOGGER.error(
-                    "Cannot bootstrap ADMIN claim for Firebase UID {}: tenant subdomain '{}' is not available",
-                    user.getUid(),
-                    bootstrapAdminTenantSubdomain
-                );
-                return null;
-            });
+        Optional<Tenant> configuredTenant = tenants.findBySubdomain(bootstrapAdminTenantSubdomain);
+        if (configuredTenant.isEmpty()) {
+            Tenant tenant = new Tenant();
+            tenant.setName("CareSync MedCare");
+            tenant.setSubdomain(bootstrapAdminTenantSubdomain);
+            tenant.setActive(true);
+            configuredTenant = Optional.of(tenants.saveAndFlush(tenant));
+            LOGGER.info("Created CareSync tenant '{}' during bootstrap provisioning", bootstrapAdminTenantSubdomain);
+        }
+        return configuredTenant.map(Tenant::getId).orElse(null);
     }
 
     private static String stringClaim(Object claim) {
