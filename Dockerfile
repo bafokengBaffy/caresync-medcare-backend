@@ -1,7 +1,7 @@
 FROM maven:3.9.16-eclipse-temurin-21-alpine AS build
 WORKDIR /workspace
 
-ARG SERVICE_NAME=caresync-api-gateway
+ARG SERVICE_NAME=caresync-patient-service
 
 COPY pom.xml .
 COPY caresync-api-gateway/pom.xml caresync-api-gateway/pom.xml
@@ -27,7 +27,7 @@ RUN mvn -B -ntp -DskipTests -pl "$SERVICE_NAME" -am package
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-ARG SERVICE_NAME=caresync-api-gateway
+ARG SERVICE_NAME=caresync-patient-service
 COPY --from=build /workspace/${SERVICE_NAME}/target/*.jar app.jar
 
 EXPOSE 8080
