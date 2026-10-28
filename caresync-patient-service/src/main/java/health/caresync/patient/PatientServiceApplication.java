@@ -10,16 +10,13 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.env.Environment;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootApplication
-@ComponentScan({"health.caresync.patient", "health.caresync.clinical", "health.caresync.billing", "health.caresync.common"})
-@EntityScan("health.caresync")
-@EnableJpaRepositories("health.caresync")
+@ComponentScan({"health.caresync.patient", "health.caresync.common"})
 @EnableJpaAuditing
 @EnableScheduling
 public class PatientServiceApplication {
@@ -28,7 +25,7 @@ public class PatientServiceApplication {
     }
 
     @Bean
-    ApplicationRunner startupDiagnostics(Environment env, ApplicationContext context, RequestMappingHandlerMapping mapping, DataSource dataSource) {
+    ApplicationRunner startupDiagnostics(Environment env, ApplicationContext context, @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping mapping, DataSource dataSource) {
         return args -> {
             System.out.println("=================================================");
             System.out.println("[PATIENT SERVICE] Starting service...");
