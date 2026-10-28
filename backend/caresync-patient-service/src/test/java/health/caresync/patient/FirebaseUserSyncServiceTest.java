@@ -63,6 +63,43 @@ class FirebaseUserSyncServiceTest {
     }
 
     @Test
+    void promotesEveryVerifiedEmailInCommaSeparatedAllowlist() throws Exception {
+        UUID tenantId = UUID.randomUUID();
+        FirebaseAuth firebaseAuth = mock(FirebaseAuth.class);
+        TenantRepository tenants = mock(TenantRepository.class);
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        Tenant tenant = mock(Tenant.class);
+        ExportedUserRecord user = mock(ExportedUserRecord.class);
+        ListUsersPage page = mock(ListUsersPage.class);
+        when(tenants.findAll()).thenReturn(List.of(tenant));
+        when(tenant.getId()).thenReturn(tenantId);
+        when(tenants.findBySubdomain("caresync")).thenReturn(Optional.of(tenant));
+        when(user.getUid()).thenReturn("firebase-user-allowlisted");
+        when(user.getEmail()).thenReturn("maribemaribe43@gmail.com");
+        when(user.isEmailVerified()).thenReturn(true);
+        when(user.isDisabled()).thenReturn(false);
+        when(user.getCustomClaims()).thenReturn(Map.of());
+        when(page.getValues()).thenReturn(List.of(user));
+        when(page.getNextPage()).thenReturn(null);
+        when(firebaseAuth.listUsers(null)).thenReturn(page);
+
+        FirebaseUserSyncService service = new FirebaseUserSyncService(
+            firebaseAuth,
+            tenants,
+            jdbcTemplate,
+            "baffkay20@gmail.com, maribemaribe43@gmail.com, kokikoki@gmail.com",
+            "caresync"
+        );
+
+        service.syncAllUsers();
+
+        verify(firebaseAuth).setCustomUserClaims("firebase-user-allowlisted", Map.of(
+            "role", "ADMIN",
+            "tenant_id", tenantId.toString()
+        ));
+    }
+
+    @Test
     void doesNotPromoteUnverifiedAllowlistedUser() throws Exception {
         FirebaseAuth firebaseAuth = mock(FirebaseAuth.class);
         TenantRepository tenants = mock(TenantRepository.class);

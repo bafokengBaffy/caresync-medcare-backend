@@ -14,6 +14,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import org.slf4j.Logger;
@@ -43,7 +45,7 @@ public class FirebaseUserSyncService {
     private final FirebaseAuth firebaseAuth;
     private final TenantRepository tenants;
     private final JdbcTemplate jdbcTemplate;
-    private final String bootstrapAdminEmail;
+    private final Set<String> bootstrapAdminEmails;
     private final String bootstrapAdminTenantSubdomain;
 
     public FirebaseUserSyncService(
@@ -56,7 +58,10 @@ public class FirebaseUserSyncService {
         this.firebaseAuth = firebaseAuth;
         this.tenants = tenants;
         this.jdbcTemplate = jdbcTemplate;
-        this.bootstrapAdminEmail = normalizeEmail(bootstrapAdminEmail);
+        this.bootstrapAdminEmails = Arrays.stream(bootstrapAdminEmail == null ? new String[0] : bootstrapAdminEmail.split(","))
+            .map(FirebaseUserSyncService::normalizeEmail)
+            .filter(email -> !email.isBlank())
+            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         this.bootstrapAdminTenantSubdomain = bootstrapAdminTenantSubdomain;
     }
 
@@ -150,9 +155,9 @@ public class FirebaseUserSyncService {
     }
 
     private boolean isBootstrapAdmin(UserRecord user) {
-        return !bootstrapAdminEmail.isBlank()
+        return !bootstrapAdminEmails.isEmpty()
             && user.isEmailVerified()
-            && normalizeEmail(user.getEmail()).equals(bootstrapAdminEmail);
+            && bootstrapAdminEmails.contains(normalizeEmail(user.getEmail()));
     }
 
     private UUID bootstrapAdminTenantId(UUID claimedTenantId, Set<UUID> existingTenants, UserRecord user) {
