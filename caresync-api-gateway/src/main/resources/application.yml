@@ -9,7 +9,7 @@ caresync:
   firebase:
     enabled: ${FIREBASE_ENABLED:true}
   gateway:
-    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,https://caresync-medcare-9e0a5.web.app,https://caresync-medcare-9e0a5.firebaseapp.com}
 management:
   endpoints:
     web:
