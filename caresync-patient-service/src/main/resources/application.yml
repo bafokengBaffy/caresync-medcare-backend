@@ -36,6 +36,10 @@ caresync:
     service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
     bucket: ${SUPABASE_STORAGE_BUCKET:caresync-bucket}
 management:
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
   endpoints:
     web:
       exposure:
