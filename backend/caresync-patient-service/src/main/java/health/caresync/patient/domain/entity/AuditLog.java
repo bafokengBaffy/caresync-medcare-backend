@@ -2,8 +2,6 @@ package health.caresync.patient.domain.entity;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity @Table(name = "audit_logs")
 public class AuditLog {
@@ -14,10 +12,9 @@ public class AuditLog {
     @Column(nullable = false) private String action;
     @Column(name = "resource_type", nullable = false) private String resourceType;
     @Column(name = "resource_id",  nullable = false) private String resourceId;
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(name = "delta", columnDefinition = "text")
     private String delta;
-    @Column(name = "ip_address") private String ipAddress;
+    @Column(name = "ip_address", length = 255) private String ipAddress;
     @Column(name = "user_agent") private String userAgent;
     @Column(name = "request_id") private String requestId;
     @Column(name = "created_at") private Instant createdAt;
