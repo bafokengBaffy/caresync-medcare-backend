@@ -21,6 +21,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { auth, parseFirebaseAuthError } from '@/lib/firebase';
 import { readAuthClaims } from '@/lib/auth-claims';
+import { forceRefreshClaims, syncCurrentUser } from '@/api/auth-sync';
 
 class AuthClaimsNotReadyError extends Error {
   constructor() {
@@ -47,6 +48,21 @@ function getLoginError(error: unknown): string {
   return 'We could not sign you in. Please try again.';
 }
 
+async function resolveProvisionedClaims(): Promise<Record<string, unknown> | null> {
+  let claims = await forceRefreshClaims();
+  if (readAuthClaims(claims ?? {})) return claims;
+
+  const sync = await syncCurrentUser();
+  if (!sync.synced) return null;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    claims = await forceRefreshClaims();
+    if (readAuthClaims(claims ?? {})) return claims;
+    await new Promise(resolve => window.setTimeout(resolve, 750));
+  }
+  return null;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,7 +85,10 @@ export default function LoginPage() {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const token = await credential.user.getIdTokenResult(true);
-      if (!readAuthClaims(token.claims)) {
+      const claims = readAuthClaims(token.claims)
+        ? token.claims
+        : await resolveProvisionedClaims();
+      if (!readAuthClaims(claims ?? {})) {
         await signOut(auth);
         throw new AuthClaimsNotReadyError();
       }
@@ -98,7 +117,10 @@ export default function LoginPage() {
       provider.setCustomParameters({ prompt: 'select_account' });
       const credential = await signInWithPopup(auth, provider);
       const token = await credential.user.getIdTokenResult(true);
-      if (!readAuthClaims(token.claims)) {
+      const claims = readAuthClaims(token.claims)
+        ? token.claims
+        : await resolveProvisionedClaims();
+      if (!readAuthClaims(claims ?? {})) {
         await signOut(auth);
         throw new AuthClaimsNotReadyError();
       }

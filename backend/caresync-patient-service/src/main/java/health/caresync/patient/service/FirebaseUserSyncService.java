@@ -65,6 +65,34 @@ public class FirebaseUserSyncService {
         this.bootstrapAdminTenantSubdomain = bootstrapAdminTenantSubdomain;
     }
 
+    public ProvisionedUser provisionCurrentUser(String uid, String email) throws FirebaseAuthException {
+        UserRecord user = firebaseAuth.getUser(uid);
+        Map<String, Object> claims = new HashMap<>(user.getCustomClaims());
+        UUID tenantId = tenantId(claims.get("tenant_id"), tenants.findAll().stream()
+            .map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()));
+        String role = stringClaim(claims.get("role"));
+        String specialty = stringClaim(claims.get("specialty"));
+
+        if (isBootstrapAdmin(user)) {
+            tenantId = bootstrapAdminTenantId(tenantId,
+                tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()), user);
+            if (tenantId == null) {
+                throw new IllegalStateException("CareSync tenant is not available for admin provisioning");
+            }
+            role = "ADMIN";
+            claims.put("role", role);
+            claims.put("tenant_id", tenantId.toString());
+            firebaseAuth.setCustomUserClaims(uid, claims);
+        }
+
+        writeBatch(List.of(new SyncUser(uid, normalizeEmail(user.getEmail() == null ? email : user.getEmail()),
+            role, tenantId, user.isDisabled())));
+        if (tenantId == null || role == null) {
+            return new ProvisionedUser(null, null, null);
+        }
+        return new ProvisionedUser(tenantId, role, specialty);
+    }
+
     public FirebaseUserSyncResponse syncAllUsers() throws FirebaseAuthException {
         Set<UUID> existingTenants = tenants.findAll().stream()
             .map(tenant -> tenant.getId())
@@ -185,5 +213,6 @@ public class FirebaseUserSyncService {
         return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     }
 
+    public record ProvisionedUser(UUID tenantId, String role, String specialty) { }
     private record SyncUser(String uid, String email, String role, UUID tenantId, boolean disabled) { }
 }

@@ -57,8 +57,20 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
             String role = token.getClaims().get(JwtClaims.ROLE) instanceof String value
                 ? value
                 : null;
+            boolean provisioningRequest = request.getRequestURI().equals("/api/v1/auth/sync");
             if (tenantClaim == null || role == null || !ALLOWED_ROLES.contains(role)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
+                if (!provisioningRequest || tenantClaim != null || role != null) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
+                    return;
+                }
+                CaresyncPrincipal principal = new CaresyncPrincipal(
+                    token.getUid(), null, null, "", token.getEmail()
+                );
+                var authentication = new UsernamePasswordAuthenticationToken(
+                    principal, null, List.of()
+                );
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                chain.doFilter(request, response);
                 return;
             }
 

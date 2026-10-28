@@ -3,7 +3,8 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } fr
 import { auth } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/auth-store';
 import type { AuthUser } from '@/types/auth';
-import type { Role, Specialty } from '@/lib/constants';
+import { readAuthClaims } from '@/lib/auth-claims';
+import { forceRefreshClaims, syncCurrentUser } from '@/api/auth-sync';
 
 export function useAuth() {
   const { user, setUser, clear } = useAuthStore();
@@ -13,18 +14,34 @@ export function useAuth() {
     if (!auth) { setLoading(false); return; }
     const unsub = onAuthStateChanged(auth, async (fbUser: User | null) => {
       if (!fbUser) { clear(); setLoading(false); return; }
-      const token = await fbUser.getIdTokenResult();
-      const claims = token.claims as Record<string, string>;
-      const next: AuthUser = {
-        uid: fbUser.uid,
-        email: fbUser.email,
-        displayName: fbUser.displayName,
-        role: (claims.role as Role) ?? 'STAFF',
-        tenantId: claims.tenant_id ?? '',
-        specialty: claims.specialty as Specialty | undefined,
-      };
-      setUser(next);
-      setLoading(false);
+      try {
+        const token = await fbUser.getIdTokenResult(true);
+        let claims = readAuthClaims(token.claims);
+        if (!claims) {
+          const sync = await syncCurrentUser();
+          if (sync.synced) {
+            const refreshed = await forceRefreshClaims();
+            claims = readAuthClaims(refreshed ?? {});
+          }
+        }
+        if (!claims) {
+          clear();
+          await signOut(auth);
+          return;
+        }
+        const next: AuthUser = {
+          uid: fbUser.uid,
+          email: fbUser.email,
+          displayName: fbUser.displayName,
+          ...claims,
+        };
+        setUser(next);
+      } catch {
+        clear();
+        await signOut(auth);
+      } finally {
+        setLoading(false);
+      }
     });
     return () => unsub();
   }, [clear, setUser]);
