@@ -10,12 +10,16 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.env.Environment;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootApplication
-@ComponentScan({"health.caresync.patient", "health.caresync.common"})
+@ComponentScan({"health.caresync.patient", "health.caresync.clinical", "health.caresync.billing", "health.caresync.common"})
+@EntityScan("health.caresync")
+@EnableJpaRepositories("health.caresync")
 @EnableJpaAuditing
 @EnableScheduling
 public class PatientServiceApplication {

@@ -9,6 +9,8 @@
     <artifactId>caresync-patient-service</artifactId>
     <dependencies>
         <dependency><groupId>health.caresync</groupId><artifactId>caresync-common</artifactId></dependency>
+        <dependency><groupId>health.caresync</groupId><artifactId>caresync-clinical-service</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>health.caresync</groupId><artifactId>caresync-billing-service</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
