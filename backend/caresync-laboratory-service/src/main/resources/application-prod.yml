@@ -1,0 +1,17 @@
+server:
+  port: ${PORT:8084}
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:${SUPABASE_DB_URL}}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:${SUPABASE_DB_USER}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:${SUPABASE_DB_PASSWORD}}}
+  jpa:
+    properties:
+      hibernate:
+        default_schema: ${DB_SCHEMA:caresync_laboratory}
+  flyway:
+    schemas: ${DB_SCHEMA:caresync_laboratory}
+    default-schema: ${DB_SCHEMA:caresync_laboratory}
+caresync:
+  firebase:
+    enabled: ${FIREBASE_ENABLED:true}

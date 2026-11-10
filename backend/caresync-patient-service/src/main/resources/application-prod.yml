@@ -1,3 +1,10 @@
 caresync:
   firebase:
     enabled: ${FIREBASE_ENABLED:true}
+server:
+  port: ${PORT:8081}
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:${SUPABASE_DB_URL}}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:${SUPABASE_DB_USER}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:${SUPABASE_DB_PASSWORD}}}

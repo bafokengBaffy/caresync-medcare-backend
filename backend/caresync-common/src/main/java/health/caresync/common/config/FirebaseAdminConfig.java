@@ -7,12 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * Shared Firebase Admin SDK configuration for downstream microservices.
@@ -20,29 +20,35 @@ import java.io.InputStream;
  * instances from attempting to initialize the SDK, which can cause race conditions.
  */
 @Configuration
+@ConditionalOnProperty(name = "caresync.firebase.enabled", havingValue = "true", matchIfMissing = true)
 public class FirebaseAdminConfig {
 
     private static final Logger log = LoggerFactory.getLogger(FirebaseAdminConfig.class);
 
-    @Value("${firebase.service-account-path:classpath:firebase-service-account.json}")
-    private Resource serviceAccountResource;
-
     @Bean
     @ConditionalOnMissingBean(FirebaseApp.class)
-    public FirebaseApp firebaseApp() throws IOException {
-        if (FirebaseApp.getApps().isEmpty()) {
-            try (InputStream serviceAccount = serviceAccountResource.getInputStream()) {
-                FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .build();
-                FirebaseApp app = FirebaseApp.initializeApp(options);
-                log.info("Firebase Admin SDK initialized in common module.");
-                return app;
-            } catch (IOException e) {
-                log.error("CRITICAL: Failed to load Firebase credentials. Ensure the service account file exists.", e);
-                throw new IOException("Failed to initialize Firebase", e);
-            }
+    public FirebaseApp firebaseApp(
+            @Value("${firebase.service-account-path:classpath:firebase-service-account.json}")
+            Resource serviceAccountResource) throws IOException {
+        if (!FirebaseApp.getApps().isEmpty()) {
+            return FirebaseApp.getInstance();
         }
-        return FirebaseApp.getInstance();
+
+        GoogleCredentials credentials = FirebaseCredentialsLoader.load(
+                serviceAccountResource, System.getenv());
+        FirebaseOptions.Builder options = FirebaseOptions.builder().setCredentials(credentials);
+        String projectId = System.getenv("FIREBASE_PROJECT_ID");
+        if (projectId != null && !projectId.isBlank()) {
+            options.setProjectId(projectId);
+        }
+
+        try {
+            FirebaseApp app = FirebaseApp.initializeApp(options.build());
+            log.info("Firebase Admin SDK initialized in common module.");
+            return app;
+        } catch (RuntimeException e) {
+            log.error("Failed to initialize Firebase Admin SDK; verify its configured credentials.", e);
+            throw e;
+        }
     }
 }

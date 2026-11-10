@@ -10,7 +10,7 @@ public class GatewayRoutesConfig {
     public RouteLocator routes(RouteLocatorBuilder b) {
         String patient  = serviceUri(env("PATIENT_SERVICE_URL",  "http://localhost:8081"));
         String clinical = serviceUri(env("CLINICAL_SERVICE_URL", "http://localhost:8082"));
-        String laboratory = serviceUri(env("LABORATORY_SERVICE_URL", "http://localhost:8086"));
+        String laboratory = serviceUri(env("LABORATORY_SERVICE_URL", "http://localhost:8084"));
         String billing  = serviceUri(env("BILLING_SERVICE_URL",  "http://localhost:8083"));
         return b.routes()
             .route("patients",  r -> r.path(

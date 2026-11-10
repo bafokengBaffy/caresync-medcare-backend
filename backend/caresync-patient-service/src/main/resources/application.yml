@@ -1,13 +1,13 @@
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 spring:
   application:
     name: caresync-patient-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/caresync}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:${SUPABASE_DB_URL:jdbc:postgresql://localhost:5432/caresync}}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:${SUPABASE_DB_USER:postgres}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:${SUPABASE_DB_PASSWORD:password}}}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -23,6 +23,9 @@ spring:
 # Firebase Configuration
 firebase:
   service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account.json}
+caresync:
+  firebase:
+    enabled: ${FIREBASE_ENABLED:true}
 
 # Actuator (Health checks)
 management:
