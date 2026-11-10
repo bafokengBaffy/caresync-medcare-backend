@@ -19,6 +19,7 @@ import health.caresync.patient.storage.DocumentVersionService;
 import java.io.IOException;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 class PatientDocumentStorageServiceTest {
@@ -49,7 +50,8 @@ class PatientDocumentStorageServiceTest {
             repository,
             tenantContext,
             versionService,
-            accessLogService
+            accessLogService,
+            mock(JdbcTemplate.class)
         );
 
         var response = service.upload(patientId, file, "user-1", "request-1");
@@ -103,7 +105,8 @@ class PatientDocumentStorageServiceTest {
             repository,
             tenantContext,
             mock(DocumentVersionService.class),
-            mock(DocumentAccessLogService.class)
+            mock(DocumentAccessLogService.class),
+            mock(JdbcTemplate.class)
         );
 
         assertThrows(

@@ -1,43 +1,41 @@
 server:
-  port: ${PORT:8080}
+  port: 8081
+
 spring:
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 11MB
-  profiles:
-    default: local
   application:
     name: caresync-patient-service
   datasource:
-    url: ${DB_URL:${SUPABASE_DB_URL}}
-    username: ${DB_USER:${SUPABASE_DB_USER}}
-    password: ${DB_PASSWORD:${SUPABASE_DB_PASSWORD}}
-    hikari:
-      maximum-pool-size: 5
-      data-source-properties:
-        sslmode: require
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/caresync}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
-    open-in-view: false
+      ddl-auto: validate # OWASP: Never use 'create' or 'update' in production
+    show-sql: false # OWASP: Disable SQL logging in production to prevent data leakage
+    properties:
+      hibernate:
+        format_sql: false
   flyway:
     enabled: true
     locations: classpath:db/migration
-caresync:
-  firebase:
-    enabled: ${FIREBASE_ENABLED:true}
-    bootstrap-admin-email: ${FIREBASE_BOOTSTRAP_ADMIN_EMAIL:}
-    bootstrap-admin-tenant-subdomain: ${FIREBASE_BOOTSTRAP_ADMIN_TENANT_SUBDOMAIN:caresync}
-    user-sync-interval-ms: ${FIREBASE_USER_SYNC_INTERVAL_MS:60000}
-    user-sync-initial-delay-ms: ${FIREBASE_USER_SYNC_INITIAL_DELAY_MS:10000}
-  storage:
-    enabled: ${SUPABASE_STORAGE_ENABLED:false}
-    url: ${SUPABASE_URL:}
-    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
-    bucket: ${SUPABASE_STORAGE_BUCKET:caresync-bucket}
+
+# Firebase Configuration
+firebase:
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account.json}
+
+# Actuator (Health checks)
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Eureka/Discovery (if using)
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}

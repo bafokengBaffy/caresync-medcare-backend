@@ -40,6 +40,23 @@ class GatewayRouteTest {
         assertTrue(matches("billing", "/api/v1/invoices"));
     }
 
+    @Test
+    void routesPublicClinicBookingRequestsToClinicalService() {
+        assertTrue(matches("clinical", "/api/v1/public/clinics/caresync/appointments"));
+    }
+
+    @Test
+    void routesAuthenticatedProfileRequestsToPatientService() {
+        assertTrue(matches("patients", "/api/v1/profile"));
+        assertTrue(matches("patients", "/api/v1/profile/image"));
+    }
+
+    @Test
+    void routesPatientSelfServiceRequestsToPatientService() {
+        assertTrue(matches("patients", "/api/v1/patient/me"));
+        assertTrue(matches("patients", "/api/v1/patient/me/records"));
+    }
+
     private boolean matches(String routeId, String path) {
         MockServerWebExchange exchange = MockServerWebExchange.from(
             org.springframework.mock.http.server.reactive.MockServerHttpRequest.get(path).build()

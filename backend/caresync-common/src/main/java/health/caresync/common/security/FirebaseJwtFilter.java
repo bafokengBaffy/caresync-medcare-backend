@@ -1,14 +1,11 @@
 package health.caresync.common.security;
-import com.google.firebase.auth.FirebaseToken;
+
 import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,13 +14,17 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 public class FirebaseJwtFilter extends OncePerRequestFilter {
-    private static final Set<String> ALLOWED_ROLES =
-        Set.of(
-            "ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
-            "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER", "RECEPTIONIST"
-        );
+    private static final Set<String> ALLOWED_ROLES = Set.of(
+        "ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
+        "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER", "RECEPTIONIST",
+        "SUPER_ADMIN", "TENANT_ADMIN", "PATIENT"
+    );
     private static final Pattern PERMISSION_FORMAT = Pattern.compile("[A-Z][A-Z0-9_]{1,63}");
     private static final int MAX_PERMISSIONS = 100;
 
@@ -57,8 +58,9 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
             String role = token.getClaims().get(JwtClaims.ROLE) instanceof String value
                 ? value
                 : null;
-            boolean provisioningRequest = request.getRequestURI().equals("/api/v1/auth/sync");
-            if (tenantClaim == null || role == null || !ALLOWED_ROLES.contains(role)) {
+            boolean provisioningRequest = request.getRequestURI().equals("/api/v1/auth/sync")
+                || request.getRequestURI().equals("/api/v1/auth/pending-status");
+            if (role == null || !ALLOWED_ROLES.contains(role)) {
                 if (!provisioningRequest || tenantClaim != null || role != null) {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
                     return;
@@ -66,15 +68,20 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
                 CaresyncPrincipal principal = new CaresyncPrincipal(
                     token.getUid(), null, null, "", token.getEmail()
                 );
-                var authentication = new UsernamePasswordAuthenticationToken(
-                    principal, null, List.of()
+                SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(principal, null, List.of())
                 );
-                SecurityContextHolder.getContext().setAuthentication(authentication);
                 chain.doFilter(request, response);
                 return;
             }
 
-            UUID tenantId = UUID.fromString(tenantClaim);
+            boolean platformAdmin = "SUPER_ADMIN".equals(role);
+            if ((platformAdmin && tenantClaim != null) || (!platformAdmin && tenantClaim == null)) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
+                return;
+            }
+
+            UUID tenantId = tenantClaim == null ? null : UUID.fromString(tenantClaim);
             String specialty = token.getClaims().get(JwtClaims.SPECIALTY) instanceof String value
                 ? value
                 : "";
@@ -85,11 +92,10 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
             authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
             permissions.stream().map(SimpleGrantedAuthority::new).forEach(authorities::add);
-            var authentication = new UsernamePasswordAuthenticationToken(
-                principal, null, authorities
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, authorities)
             );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } catch (FirebaseAuthException | IllegalArgumentException | IllegalStateException e) {
+        } catch (FirebaseAuthException | IllegalArgumentException | IllegalStateException exception) {
             SecurityContextHolder.clearContext();
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
             return;

@@ -21,4 +21,18 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
         @Param("tenantId") UUID tenantId,
         @Param("invoiceId") UUID invoiceId
     );
+
+    @Query(value = """
+        select greatest(
+            coalesce((select sum(p.amount_cents) from payments p
+                where p.tenant_id = :tenantId and p.invoice_id = :invoiceId and p.status = 'RECORDED'), 0)
+            - coalesce((select sum(r.amount_cents) from refunds r
+                where r.tenant_id = :tenantId and r.invoice_id = :invoiceId and r.status = 'PROCESSED'), 0),
+            0
+        )
+        """, nativeQuery = true)
+    long sumNetPaidByInvoice(
+        @Param("tenantId") UUID tenantId,
+        @Param("invoiceId") UUID invoiceId
+    );
 }

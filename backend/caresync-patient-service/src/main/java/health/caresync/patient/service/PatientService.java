@@ -1,86 +1,116 @@
 package health.caresync.patient.service;
-import health.caresync.patient.domain.repository.PatientRepository;
-import health.caresync.patient.domain.entity.Patient;
-import health.caresync.patient.dto.*;
-import health.caresync.patient.mapper.PatientMapper;
+
 import health.caresync.common.exception.NotFoundException;
 import health.caresync.common.exception.ValidationException;
 import health.caresync.common.tenant.TenantRlsContext;
-import health.caresync.common.web.PageResponse;
-import java.util.List;
-import java.util.Objects;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.transaction.annotation.Transactional;
+import health.caresync.patient.domain.entity.Patient;
+import health.caresync.patient.domain.repository.PatientRepository;
+import health.caresync.patient.dto.PatientCreateRequest;
+import health.caresync.patient.dto.PatientResponse;
+import health.caresync.patient.dto.PatientUpdateRequest;
+import health.caresync.patient.mapper.PatientMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 import java.util.UUID;
 
+/**
+ * Service handling business logic for Patients.
+ * OWASP Alignment: Enforces Tenant Isolation on every query and mutation.
+ * Validates that the current user has the right to access the specific patient record.
+ */
 @Service
 public class PatientService {
-    private final PatientRepository repo;
-    private final PatientMapper mapper;
+
+    private static final Logger log = LoggerFactory.getLogger(PatientService.class);
+    private final PatientRepository patientRepository;
+    private final PatientMapper patientMapper;
     private final TenantRlsContext tenantRlsContext;
 
-    public PatientService(PatientRepository r, PatientMapper m, TenantRlsContext tenantRlsContext) {
-        this.repo = r;
-        this.mapper = m;
+    public PatientService(
+        PatientRepository patientRepository,
+        PatientMapper patientMapper,
+        TenantRlsContext tenantRlsContext
+    ) {
+        this.patientRepository = patientRepository;
+        this.patientMapper = patientMapper;
         this.tenantRlsContext = tenantRlsContext;
     }
 
-    @Transactional
-    public PatientResponse create(PatientCreateRequest req) {
+    @Transactional(readOnly = true)
+    public List<PatientResponse> getAllPatients() {
         UUID tenantId = tenantRlsContext.apply();
-        if (req.email() != null && !req.email().isBlank()
-            && repo.existsByTenantIdAndEmailIgnoreCase(tenantId, req.email())) {
-            throw new ValidationException("A patient with this email already exists");
-        }
-        return mapper.toResponse(repo.save(mapper.toEntity(req)));
+        return patientRepository.findAllByTenantIdAndMergedIntoPatientIdIsNull(
+                tenantId, org.springframework.data.domain.PageRequest.of(0, 100)
+            ).getContent().stream()
+                .map(patientMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PatientResponse getPatientById(UUID id) {
+        return get(id);
     }
 
     @Transactional(readOnly = true)
     public PatientResponse get(UUID id) {
         UUID tenantId = tenantRlsContext.apply();
-        return repo.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
-            .map(mapper::toResponse)
-            .orElseThrow(() -> new NotFoundException("Patient not found"));
+        Patient patient = patientRepository.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
+                .orElseThrow(() -> new NotFoundException("Patient", "id", id));
+        return patientMapper.toResponse(patient);
     }
 
     @Transactional
-    public PatientResponse update(UUID id, PatientUpdateRequest request) {
+    public PatientResponse createPatient(PatientCreateRequest request) {
         UUID tenantId = tenantRlsContext.apply();
-        Patient patient = repo.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
-            .orElseThrow(() -> new NotFoundException("Patient not found"));
-
-        if (request.email() != null && !request.email().isBlank()
-            && !Objects.equals(request.email(), patient.getEmail())
-            && repo.existsByTenantIdAndEmailIgnoreCase(tenantId, request.email())) {
-            throw new ValidationException("A patient with this email already exists");
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+            && patientRepository.existsByTenantIdAndEmailIgnoreCase(tenantId, request.getEmail())) {
+            throw new ValidationException("A patient with this email already exists.");
         }
 
-        if (request.firstName() != null) patient.setFirstName(request.firstName());
-        if (request.lastName() != null) patient.setLastName(request.lastName());
-        if (request.gender() != null) patient.setGender(request.gender());
-        if (request.email() != null) patient.setEmail(request.email());
-        if (request.phone() != null) patient.setPhone(request.phone());
-        if (request.address() != null) patient.setAddress(request.address());
-        return mapper.toResponse(patient);
+        Patient patient = patientMapper.toEntity(request);
+        patient.setTenantId(tenantId);
+        Patient saved = patientRepository.save(patient);
+        log.info("Created new patient with ID: {} for tenant: {}", saved.getId(), tenantId);
+        return patientMapper.toResponse(saved);
     }
 
-    @Transactional(readOnly = true)
-    public PageResponse<PatientSummaryResponse> list(String query, int page, int size) {
-        if (page < 0 || size < 1 || size > 100) {
-            throw new ValidationException("Page must be non-negative and size must be between 1 and 100");
-        }
+    @Transactional
+    public PatientResponse updatePatient(UUID id, PatientUpdateRequest request) {
         UUID tenantId = tenantRlsContext.apply();
-        Page<Patient> patients = repo.searchByTenantId(
-            tenantId,
-            query == null ? "" : query.trim(),
-            PageRequest.of(page, size, Sort.by("lastName").ascending().and(Sort.by("firstName").ascending()))
-        );
-        List<PatientSummaryResponse> content = patients.getContent().stream()
-            .map(mapper::toSummary)
-            .toList();
-        return new PageResponse<>(content, page, size, patients.getTotalElements());
+        Patient patient = patientRepository.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
+                .orElseThrow(() -> new NotFoundException("Patient", "id", id));
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+            && !request.getEmail().equalsIgnoreCase(patient.getEmail())
+            && patientRepository.existsByTenantIdAndEmailIgnoreCase(tenantId, request.getEmail())) {
+            throw new ValidationException("A patient with this email already exists.");
+        }
+
+        // Update only mutable fields
+        if (request.getFirstName() != null) patient.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) patient.setLastName(request.getLastName());
+        if (request.getGender() != null) patient.setGender(request.getGender());
+        if (request.getEmail() != null) patient.setEmail(request.getEmail());
+        if (request.getPhone() != null) patient.setPhone(request.getPhone());
+        if (request.getAddress() != null) patient.setAddress(request.getAddress());
+        if (request.getEmergencyContactName() != null) patient.setEmergencyContactName(request.getEmergencyContactName());
+        if (request.getEmergencyContactPhone() != null) patient.setEmergencyContactPhone(request.getEmergencyContactPhone());
+
+        Patient updated = patientRepository.save(patient);
+        log.info("Updated patient with ID: {}", updated.getId());
+        return patientMapper.toResponse(updated);
+    }
+
+    @Transactional
+    public void deletePatient(UUID id) {
+        UUID tenantId = tenantRlsContext.apply();
+        Patient patient = patientRepository.findByIdAndTenantIdAndMergedIntoPatientIdIsNull(id, tenantId)
+                .orElseThrow(() -> new NotFoundException("Patient", "id", id));
+        patientRepository.delete(patient);
+        log.info("Deleted patient with ID: {}", id);
     }
 }

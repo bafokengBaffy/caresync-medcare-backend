@@ -39,7 +39,7 @@ class PaymentServiceTest {
         when(invoice.getStatus()).thenReturn(InvoiceStatus.ISSUED);
         when(invoice.getAmountCents()).thenReturn(1000L);
         when(invoice.getCurrency()).thenReturn("USD");
-        when(payments.sumRecordedByInvoice(tenantId, invoiceId)).thenReturn(0L);
+        when(payments.sumNetPaidByInvoice(tenantId, invoiceId)).thenReturn(0L);
         when(persistedPayment.getId()).thenReturn(UUID.randomUUID());
         when(payments.save(any(Payment.class))).thenReturn(persistedPayment);
 

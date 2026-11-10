@@ -1,31 +1,9 @@
-server:
-  port: ${PORT:8080}
-caresync:
-  firebase:
-    enabled: ${FIREBASE_ENABLED:true}
-  firestore:
-    enabled: ${FIRESTORE_ENABLED:false}
+server: { port: 8082 }
 spring:
-  profiles:
-    default: local
-  application:
-    name: caresync-clinical-service
+  application: { name: caresync-clinical-service }
   datasource:
-    url: ${DB_URL:${SUPABASE_DB_URL}}
-    username: ${DB_USER:${SUPABASE_DB_USER}}
-    password: ${DB_PASSWORD:${SUPABASE_DB_PASSWORD}}
-    hikari:
-      maximum-pool-size: 5
-      data-source-properties:
-        sslmode: require
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-  flyway:
-    enabled: false
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/caresync}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+  jpa: { hibernate: { ddl-auto: validate } }
+firebase: { service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account.json} }

@@ -1,0 +1,19 @@
+ALTER TABLE tenants
+    ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE'
+        CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING')),
+    ADD COLUMN plan VARCHAR(16) NOT NULL DEFAULT 'FREE'
+        CHECK (plan IN ('FREE', 'PRO', 'ENTERPRISE')),
+    ADD COLUMN description VARCHAR(1000),
+    ADD COLUMN timezone VARCHAR(100) NOT NULL DEFAULT 'UTC',
+    ADD COLUMN owner_name VARCHAR(255),
+    ADD COLUMN owner_email VARCHAR(320),
+    ADD COLUMN owner_phone VARCHAR(32),
+    ADD COLUMN country VARCHAR(100),
+    ADD COLUMN city VARCHAR(100),
+    ADD COLUMN address TEXT,
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+UPDATE tenants
+SET status = CASE WHEN is_active THEN 'ACTIVE' ELSE 'INACTIVE' END;
+
+CREATE INDEX idx_tenants_status_plan ON tenants(status, plan);

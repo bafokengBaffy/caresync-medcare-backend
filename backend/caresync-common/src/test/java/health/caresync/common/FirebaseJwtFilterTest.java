@@ -51,6 +51,51 @@ class FirebaseJwtFilterTest {
     }
 
     @Test
+    void acceptsTenantIndependentSuperAdminClaim() throws Exception {
+        FirebaseToken token = org.mockito.Mockito.mock(FirebaseToken.class);
+        when(verifier.verify("token")).thenReturn(token);
+        when(token.getClaims()).thenReturn(Map.of("role", "SUPER_ADMIN"));
+        when(token.getUid()).thenReturn("platform-admin-1");
+        when(token.getEmail()).thenReturn("platform@example.test");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        SecurityContextHolder.clearContext();
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertEquals(200, response.getStatus());
+        assertEquals("SUPER_ADMIN", ((health.caresync.common.security.CaresyncPrincipal)
+            authentication.getPrincipal()).role());
+        assertNull(((health.caresync.common.security.CaresyncPrincipal)
+            authentication.getPrincipal()).tenantId());
+        assertTrue(authentication.getAuthorities().stream()
+            .anyMatch(authority -> authority.getAuthority().equals("ROLE_SUPER_ADMIN")));
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void rejectsSuperAdminTokenThatContainsTenantClaim() throws Exception {
+        FirebaseToken token = org.mockito.Mockito.mock(FirebaseToken.class);
+        when(verifier.verify("token")).thenReturn(token);
+        when(token.getClaims()).thenReturn(Map.of(
+            "role", "SUPER_ADMIN",
+            "tenant_id", UUID.randomUUID().toString()
+        ));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        SecurityContextHolder.clearContext();
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertEquals(401, response.getStatus());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
     void invalidTokenDoesNotContinueAnonymously() throws Exception {
         when(verifier.verify("invalid")).thenThrow(new IllegalArgumentException("invalid"));
         MockHttpServletRequest request = new MockHttpServletRequest();

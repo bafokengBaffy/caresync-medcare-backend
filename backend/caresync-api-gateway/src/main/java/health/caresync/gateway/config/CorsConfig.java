@@ -16,7 +16,7 @@ public class CorsConfig {
         @Value("${caresync.gateway.allowed-origins:http://localhost:5173}") String allowedOrigins
     ) {
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
-            .map(String::trim)
+            .map(origin -> origin == null ? "" : origin.trim())
             .filter(origin -> !origin.isEmpty())
             .toList();
         if (origins.isEmpty() || origins.stream().anyMatch(origin -> origin.contains("*"))) {

@@ -2,6 +2,8 @@ package health.caresync.patient.storage;
 
 import health.caresync.common.exception.NotFoundException;
 import health.caresync.common.exception.ValidationException;
+import health.caresync.common.exception.ForbiddenException;
+import health.caresync.common.security.CaresyncPrincipal;
 import health.caresync.common.tenant.TenantRlsContext;
 import health.caresync.patient.domain.entity.PatientDocument;
 import health.caresync.patient.domain.repository.PatientDocumentRepository;
@@ -12,6 +14,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -32,6 +37,7 @@ public class PatientDocumentStorageService {
     private final TenantRlsContext tenantRlsContext;
     private final DocumentVersionService documentVersionService;
     private final DocumentAccessLogService accessLogService;
+    private final JdbcTemplate jdbcTemplate;
 
     public PatientDocumentStorageService(
         SupabaseStorageClient storageClient,
@@ -40,7 +46,8 @@ public class PatientDocumentStorageService {
         PatientDocumentRepository documentRepository,
         TenantRlsContext tenantRlsContext,
         DocumentVersionService documentVersionService,
-        DocumentAccessLogService accessLogService
+        DocumentAccessLogService accessLogService,
+        JdbcTemplate jdbcTemplate
     ) {
         this.storageClient = Objects.requireNonNull(storageClient);
         this.bucket = Objects.requireNonNull(bucket);
@@ -49,6 +56,7 @@ public class PatientDocumentStorageService {
         this.tenantRlsContext = Objects.requireNonNull(tenantRlsContext);
         this.documentVersionService = Objects.requireNonNull(documentVersionService);
         this.accessLogService = Objects.requireNonNull(accessLogService);
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
     }
 
     @Transactional
@@ -103,6 +111,7 @@ public class PatientDocumentStorageService {
     public List<PatientDocumentResponse> list(UUID patientId, String actorId, String correlationId) {
         patientService.get(patientId);
         UUID tenantId = tenantRlsContext.apply();
+        requirePatientOwnRecord(patientId, tenantId, actorId);
         List<PatientDocument> documents = documentRepository
             .findAllByTenantIdAndPatientIdOrderByUploadedAtDesc(tenantId, patientId);
         accessLogService.record(tenantId, patientId, null, actorId, "LIST", correlationId);
@@ -121,6 +130,7 @@ public class PatientDocumentStorageService {
     ) {
         patientService.get(patientId);
         UUID tenantId = tenantRlsContext.apply();
+        requirePatientOwnRecord(patientId, tenantId, actorId);
         PatientDocument document = findDocument(tenantId, patientId, documentId);
         SupabaseStorageClient.StoredObject storedObject = storageClient.download(
             bucket,
@@ -148,6 +158,27 @@ public class PatientDocumentStorageService {
     private PatientDocument findDocument(UUID tenantId, UUID patientId, UUID documentId) {
         return documentRepository.findByIdAndTenantIdAndPatientId(documentId, tenantId, patientId)
             .orElseThrow(() -> new NotFoundException("Patient document not found"));
+    }
+
+    private void requirePatientOwnRecord(UUID patientId, UUID tenantId, String actorId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+            || !(authentication.getPrincipal() instanceof CaresyncPrincipal principal)
+            || !"PATIENT".equals(principal.role())) {
+            return;
+        }
+        Boolean ownsRecord = jdbcTemplate.query(
+            "SELECT EXISTS (SELECT 1 FROM patients "
+                + "WHERE id = ? AND tenant_id = ? AND firebase_uid = ? "
+                + "AND merged_into_patient_id IS NULL)",
+            resultSet -> resultSet.next() && resultSet.getBoolean(1),
+            patientId,
+            tenantId,
+            actorId
+        );
+        if (!Boolean.TRUE.equals(ownsRecord)) {
+            throw new ForbiddenException("Patient documents are limited to the linked patient record");
+        }
     }
 
     private static PatientDocumentResponse toResponse(PatientDocument document) {

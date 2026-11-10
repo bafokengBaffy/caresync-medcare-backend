@@ -1,57 +1,52 @@
 package health.caresync.clinical.controller;
-
-import health.caresync.clinical.dto.AppointmentCreateRequest;
 import health.caresync.clinical.dto.AppointmentResponse;
-import health.caresync.clinical.dto.AppointmentStatusRequest;
+import health.caresync.clinical.dto.AppointmentRequest;
 import health.caresync.clinical.service.AppointmentService;
+import health.caresync.common.annotation.AuditLog;
+import health.caresync.common.annotation.RequirePermission;
+import health.caresync.common.web.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/api/v1/appointments")
+@RestController @RequestMapping("/api/v1/appointments")
 public class AppointmentController {
-    private final AppointmentService appointmentService;
-
-    public AppointmentController(AppointmentService appointmentService) {
-        this.appointmentService = appointmentService;
-    }
-
+    private final AppointmentService service;
+    public AppointmentController(AppointmentService service) { this.service = service; }
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF')")
-    public AppointmentResponse create(@Valid @RequestBody AppointmentCreateRequest request) {
-        return appointmentService.create(request);
+    @RequirePermission("appointments:write")
+    @AuditLog(action = "CREATE_APPOINTMENT")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> book(@Valid @RequestBody AppointmentRequest request) {
+        UUID patientId = parseId(request.getPatientId(), "Patient");
+        UUID providerId = parseId(request.getProviderId(), "Provider");
+        var response = service.bookAppointment(
+            patientId, providerId, request.getAppointmentTime(),
+            request.getAppointmentTime().plus(Duration.ofMinutes(30)), "CONSULTATION"
+        );
+        return new ResponseEntity<>(ApiResponse.success(response), HttpStatus.CREATED);
     }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER')")
-    public AppointmentResponse get(@PathVariable UUID id) {
-        return appointmentService.get(id);
+    @GetMapping("/patient/{patientId}")
+    @RequirePermission("appointments:read")
+    public ResponseEntity<ApiResponse<List<AppointmentResponse>>> getForPatient(@PathVariable String patientId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getAppointmentsForPatient(patientId)));
     }
-
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER')")
-    public List<AppointmentResponse> list() {
-        return appointmentService.list();
-    }
-
-    @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER')")
-    public AppointmentResponse changeStatus(
+    @PatchMapping("/{id}/status")
+    @RequirePermission("appointments:write")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> updateStatus(
         @PathVariable UUID id,
-        @Valid @RequestBody AppointmentStatusRequest request
+        @RequestParam String status
     ) {
-        return appointmentService.changeStatus(id, request);
+        return ResponseEntity.ok(ApiResponse.success(service.updateStatus(id, status)));
+    }
+
+    private static UUID parseId(String value, String name) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException exception) {
+            throw new health.caresync.common.exception.ValidationException(name + " ID must be a UUID");
+        }
     }
 }

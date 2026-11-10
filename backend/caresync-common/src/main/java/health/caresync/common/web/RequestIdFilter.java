@@ -1,19 +1,37 @@
 package health.caresync.common.web;
-import jakarta.servlet.*;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.MDC;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * Filter to inject a unique Request ID into the response headers.
+ * OWASP Alignment: Helps in mitigating Log Injection and provides a reliable 
+ * identifier for users to report issues without exposing internal trace IDs.
+ */
 @Component
-@Order(0)
-public class RequestIdFilter implements Filter {
-    @Override public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-        String rid = UUID.randomUUID().toString();
-        MDC.put("requestId", rid);
-        ((HttpServletResponse) res).setHeader(CorrelationHeaders.REQUEST_ID, rid);
-        try { chain.doFilter(req, res); } finally { MDC.remove("requestId"); }
+public class RequestIdFilter extends OncePerRequestFilter {
+
+    private static final String REQUEST_ID_HEADER = "X-Request-ID";
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        
+        String requestId = request.getHeader(REQUEST_ID_HEADER);
+        
+        if (requestId == null || requestId.isBlank()) {
+            requestId = UUID.randomUUID().toString();
+        }
+
+        response.setHeader(REQUEST_ID_HEADER, requestId);
+
+        filterChain.doFilter(request, response);
     }
 }

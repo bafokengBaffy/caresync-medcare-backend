@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class FirebaseGatewayTokenVerifier implements GatewayTokenVerifier {
     @Override
     public VerifiedIdentity verify(String rawToken) throws FirebaseAuthException {
-        FirebaseToken token = FirebaseAuth.getInstance().verifyIdToken(rawToken);
+        FirebaseToken token = FirebaseAuth.getInstance().verifyIdToken(rawToken, true);
         Object tenant = token.getClaims().get("tenant_id");
         Object role = token.getClaims().get("role");
         Object specialty = token.getClaims().get("specialty");

@@ -3,6 +3,7 @@ package health.caresync.gateway.config;
 import com.google.firebase.auth.FirebaseAuthException;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -14,8 +15,15 @@ import reactor.core.scheduler.Schedulers;
 
 @Component
 public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
+    private static final Pattern PUBLIC_BOOKING_PATH = Pattern.compile(
+        "^/api/v1/public/clinics/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?/appointments$"
+    );
     private static final Set<String> ALLOWED_ROLES =
-        Set.of("ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER");
+        Set.of(
+            "SUPER_ADMIN", "TENANT_ADMIN", "PATIENT", "ADMIN", "PROVIDER", "STAFF",
+            "RECEPTION", "FINANCE", "MANAGER", "CONSENT_MANAGER", "CLINICIAN",
+            "PRIVACY_OFFICER", "RECEPTIONIST"
+        );
     private final GatewayTokenVerifier tokenVerifier;
 
     public JwtAuthGatewayFilter(GatewayTokenVerifier tokenVerifier) {
@@ -27,7 +35,8 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
         if ((exchange.getRequest().getMethod() != null
             && exchange.getRequest().getMethod().matches("OPTIONS"))
-            || isPublicPath(path)) {
+            || isPublicPath(path, exchange.getRequest().getMethod() != null
+                && exchange.getRequest().getMethod().matches("POST"))) {
             return chain.filter(exchange);
         }
 
@@ -57,26 +66,35 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
 
         String tenantText = identity.tenantId();
         String role = identity.role();
-        if (tenantText == null
-            || role == null
-            || !ALLOWED_ROLES.contains(role)) {
+        boolean platformAdmin = "SUPER_ADMIN".equals(role);
+        if (role == null || !ALLOWED_ROLES.contains(role)
+            || platformAdmin && tenantText != null
+            || !platformAdmin && tenantText == null) {
             return unauthorized(exchange);
         }
 
-        UUID tenantId;
-        try {
-            tenantId = UUID.fromString(tenantText);
-        } catch (IllegalArgumentException exception) {
-            return unauthorized(exchange);
+        String selectedTenantText = tenantText;
+        if (platformAdmin) {
+            selectedTenantText = exchange.getRequest().getHeaders().getFirst("X-Tenant-Id");
         }
 
+        UUID tenantId = null;
+        if (selectedTenantText != null && !selectedTenantText.isBlank()) {
+            try {
+                tenantId = UUID.fromString(selectedTenantText);
+            } catch (IllegalArgumentException exception) {
+                return badRequest(exchange);
+            }
+        }
+
+        UUID verifiedTenantId = tenantId;
         String specialty = identity.specialty() == null ? "" : identity.specialty();
         var request = exchange.getRequest().mutate().headers(headers -> {
             headers.remove("X-Tenant-Id");
             headers.remove("X-User-Id");
             headers.remove("X-Role");
             headers.remove("X-Specialty");
-            headers.set("X-Tenant-Id", tenantId.toString());
+            if (verifiedTenantId != null) headers.set("X-Tenant-Id", verifiedTenantId.toString());
             headers.set("X-User-Id", identity.userId());
             headers.set("X-Role", role);
             headers.set("X-Specialty", specialty);
@@ -89,11 +107,19 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
         return exchange.getResponse().setComplete();
     }
 
-    private boolean isPublicPath(String path) {
+    private Mono<Void> badRequest(ServerWebExchange exchange) {
+        exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+        return exchange.getResponse().setComplete();
+    }
+
+    private boolean isPublicPath(String path, boolean isPost) {
         return isPathOrChild(path, "/actuator/health")
             || isPathOrChild(path, "/v3/api-docs")
             || path.equals("/swagger-ui.html")
-            || isPathOrChild(path, "/swagger-ui");
+            || isPathOrChild(path, "/swagger-ui")
+            || path.equals("/api/v1/auth/sync")
+            || path.equals("/api/v1/auth/pending-status")
+            || isPost && PUBLIC_BOOKING_PATH.matcher(path).matches();
     }
 
     private boolean isPathOrChild(String path, String publicPath) {

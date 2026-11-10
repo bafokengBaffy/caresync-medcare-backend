@@ -56,4 +56,54 @@ class TenantContextFilterTest {
 
         assertNull(TenantContext.get());
     }
+
+    @Test
+    void allowsSuperAdminToSelectATenantForTenantScopedRequests() throws Exception {
+        UUID selectedTenant = UUID.randomUUID();
+        CaresyncPrincipal principal = new CaresyncPrincipal(
+            "platform-admin", null, "SUPER_ADMIN", null, null
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(principal, null, List.of())
+        );
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/v1/patients");
+        request.addHeader("X-Tenant-Id", selectedTenant.toString());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = (req, res) -> assertEquals(selectedTenant, TenantContext.get());
+
+        try {
+            new TenantContextFilter().doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertNull(TenantContext.get());
+        } finally {
+            SecurityContextHolder.clearContext();
+            TenantContext.clear();
+        }
+    }
+
+    @Test
+    void requiresTenantSelectionForSuperAdminTenantDataRequests() throws Exception {
+        CaresyncPrincipal principal = new CaresyncPrincipal(
+            "platform-admin", null, "SUPER_ADMIN", null, null
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(principal, null, List.of())
+        );
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/v1/patients");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = (req, res) -> {
+            throw new AssertionError("Tenant-scoped request must not reach the chain");
+        };
+
+        try {
+            new TenantContextFilter().doFilter(request, response, chain);
+            assertEquals(400, response.getStatus());
+            assertNull(TenantContext.get());
+        } finally {
+            SecurityContextHolder.clearContext();
+            TenantContext.clear();
+        }
+    }
 }

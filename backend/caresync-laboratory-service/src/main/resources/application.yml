@@ -1,0 +1,9 @@
+server: { port: 8084 }
+spring:
+  application: { name: caresync-laboratory-service }
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/caresync}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+  jpa: { hibernate: { ddl-auto: validate } }
+firebase: { service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account.json} }

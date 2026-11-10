@@ -25,7 +25,7 @@ public class Appointment implements TenantAware {
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;
 
-    @Column(name = "patient_id", nullable = false)
+    @Column(name = "patient_id")
     private UUID patientId;
 
     @Column(name = "provider_id", nullable = false)
@@ -46,6 +46,18 @@ public class Appointment implements TenantAware {
 
     @Column(name = "firestore_note_id")
     private String firestoreNoteId;
+
+    @Column(name = "guest_name", length = 200)
+    private String guestName;
+
+    @Column(name = "guest_email", length = 320)
+    private String guestEmail;
+
+    @Column(name = "guest_phone", length = 32)
+    private String guestPhone;
+
+    @Column(name = "guest_location", length = 500)
+    private String guestLocation;
 
     @Override
     public UUID getTenantId() {
@@ -68,6 +80,15 @@ public class Appointment implements TenantAware {
     public void setPatientId(UUID patientId) {
         this.patientId = patientId;
     }
+
+    public String getGuestName() { return guestName; }
+    public void setGuestName(String guestName) { this.guestName = guestName; }
+    public String getGuestEmail() { return guestEmail; }
+    public void setGuestEmail(String guestEmail) { this.guestEmail = guestEmail; }
+    public String getGuestPhone() { return guestPhone; }
+    public void setGuestPhone(String guestPhone) { this.guestPhone = guestPhone; }
+    public String getGuestLocation() { return guestLocation; }
+    public void setGuestLocation(String guestLocation) { this.guestLocation = guestLocation; }
 
     public UUID getProviderId() {
         return providerId;

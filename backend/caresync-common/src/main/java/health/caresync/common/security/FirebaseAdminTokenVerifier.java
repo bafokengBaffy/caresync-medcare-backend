@@ -9,6 +9,6 @@ import org.springframework.stereotype.Component;
 public class FirebaseAdminTokenVerifier implements FirebaseTokenVerifier {
     @Override
     public FirebaseToken verify(String token) throws FirebaseAuthException {
-        return FirebaseAuth.getInstance().verifyIdToken(token);
+        return FirebaseAuth.getInstance().verifyIdToken(token, true);
     }
 }

@@ -35,7 +35,7 @@ public class PatientDocumentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER', 'PATIENT')")
     public List<PatientDocumentResponse> list(
         @PathVariable UUID patientId,
         @AuthenticationPrincipal CaresyncPrincipal principal,
@@ -58,7 +58,7 @@ public class PatientDocumentController {
     }
 
     @GetMapping("/{documentId}/content")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTION', 'STAFF', 'PROVIDER', 'MANAGER', 'PATIENT')")
     public ResponseEntity<byte[]> download(
         @PathVariable UUID patientId,
         @PathVariable UUID documentId,

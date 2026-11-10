@@ -12,20 +12,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import health.caresync.common.security.CaresyncPrincipal;
+import health.caresync.common.tenant.TenantRlsContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @ConditionalOnProperty(name = "caresync.firebase.enabled", havingValue = "true")
@@ -46,14 +51,19 @@ public class FirebaseUserSyncService {
     private final TenantRepository tenants;
     private final JdbcTemplate jdbcTemplate;
     private final Set<String> bootstrapAdminEmails;
+    private final Set<String> superAdminEmails;
     private final String bootstrapAdminTenantSubdomain;
+    private final TenantRlsContext tenantRlsContext;
 
+    @Autowired
     public FirebaseUserSyncService(
         FirebaseAuth firebaseAuth,
         TenantRepository tenants,
         JdbcTemplate jdbcTemplate,
         @Value("${caresync.firebase.bootstrap-admin-email:}") String bootstrapAdminEmail,
-        @Value("${caresync.firebase.bootstrap-admin-tenant-subdomain:caresync}") String bootstrapAdminTenantSubdomain
+        @Value("${caresync.firebase.bootstrap-admin-tenant-subdomain:caresync}") String bootstrapAdminTenantSubdomain,
+        @Value("${caresync.firebase.super-admin-email:}") String superAdminEmail,
+        TenantRlsContext tenantRlsContext
     ) {
         this.firebaseAuth = firebaseAuth;
         this.tenants = tenants;
@@ -62,9 +72,25 @@ public class FirebaseUserSyncService {
             .map(FirebaseUserSyncService::normalizeEmail)
             .filter(email -> !email.isBlank())
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        this.superAdminEmails = Arrays.stream(superAdminEmail == null ? new String[0] : superAdminEmail.split(","))
+            .map(FirebaseUserSyncService::normalizeEmail)
+            .filter(email -> !email.isBlank())
+            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         this.bootstrapAdminTenantSubdomain = bootstrapAdminTenantSubdomain;
+        this.tenantRlsContext = tenantRlsContext;
     }
 
+    public FirebaseUserSyncService(
+        FirebaseAuth firebaseAuth,
+        TenantRepository tenants,
+        JdbcTemplate jdbcTemplate,
+        String bootstrapAdminEmail,
+        String bootstrapAdminTenantSubdomain
+    ) {
+        this(firebaseAuth, tenants, jdbcTemplate, bootstrapAdminEmail, bootstrapAdminTenantSubdomain, "", null);
+    }
+
+    @Transactional
     public ProvisionedUser provisionCurrentUser(String uid, String email) throws FirebaseAuthException {
         UserRecord user = firebaseAuth.getUser(uid);
         Map<String, Object> claims = new HashMap<>(user.getCustomClaims());
@@ -73,7 +99,14 @@ public class FirebaseUserSyncService {
         String role = stringClaim(claims.get("role"));
         String specialty = stringClaim(claims.get("specialty"));
 
-        if (isBootstrapAdmin(user)) {
+        boolean platformAdmin = isSuperAdmin(user);
+        if (platformAdmin) {
+            claims.put("role", "SUPER_ADMIN");
+            claims.remove("tenant_id");
+            firebaseAuth.setCustomUserClaims(uid, claims);
+            tenantId = null;
+            role = "SUPER_ADMIN";
+        } else if (isBootstrapAdmin(user)) {
             tenantId = bootstrapAdminTenantId(tenantId,
                 tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()), user);
             if (tenantId == null) {
@@ -85,12 +118,33 @@ public class FirebaseUserSyncService {
             firebaseAuth.setCustomUserClaims(uid, claims);
         }
 
+        if (tenantRlsContext != null) {
+            tenantRlsContext.applyIdentity(new CaresyncPrincipal(uid, tenantId, role, specialty, user.getEmail()));
+        } else {
+            jdbcTemplate.queryForObject(
+                "select set_config('app.firebase_uid', ?, true)",
+                String.class,
+                uid
+            );
+            jdbcTemplate.queryForObject(
+                "select set_config('app.is_super_admin', ?, true)",
+                String.class,
+                Boolean.toString(platformAdmin)
+            );
+        }
         writeBatch(List.of(new SyncUser(uid, normalizeEmail(user.getEmail() == null ? email : user.getEmail()),
             role, tenantId, user.isDisabled())));
-        if (tenantId == null || role == null) {
-            return new ProvisionedUser(null, null, null);
+        if (!platformAdmin && (tenantId == null || role == null)) {
+            jdbcTemplate.update("""
+                INSERT INTO registration_requests (email, firebase_uid, requested_role, status)
+                VALUES (?, ?, 'PATIENT', 'PENDING')
+                ON CONFLICT (firebase_uid) WHERE status = 'PENDING' DO NOTHING
+                """,
+                normalizeEmail(user.getEmail() == null ? email : user.getEmail()), uid
+            );
+            return new ProvisionedUser(null, null, specialty, "PENDING_APPROVAL");
         }
-        return new ProvisionedUser(tenantId, role, specialty);
+        return new ProvisionedUser(tenantId, role, specialty, "PROVISIONED");
     }
 
     public FirebaseUserSyncResponse syncAllUsers() throws FirebaseAuthException {
@@ -107,7 +161,15 @@ public class FirebaseUserSyncService {
                 Map<String, Object> claims = new HashMap<>(user.getCustomClaims());
                 UUID tenantId = tenantId(claims.get("tenant_id"), existingTenants);
                 String role = stringClaim(claims.get("role"));
-                if (isBootstrapAdmin(user)) {
+                if (isSuperAdmin(user)) {
+                    if (!"SUPER_ADMIN".equals(role) || claims.containsKey("tenant_id")) {
+                        claims.put("role", "SUPER_ADMIN");
+                        claims.remove("tenant_id");
+                        firebaseAuth.setCustomUserClaims(user.getUid(), claims);
+                    }
+                    role = "SUPER_ADMIN";
+                    tenantId = null;
+                } else if (isBootstrapAdmin(user)) {
                     UUID adminTenantId = bootstrapAdminTenantId(tenantId, existingTenants, user);
                     if (adminTenantId != null) {
                         boolean claimsChanged = !"ADMIN".equals(role)
@@ -184,25 +246,31 @@ public class FirebaseUserSyncService {
 
     private boolean isBootstrapAdmin(UserRecord user) {
         return !bootstrapAdminEmails.isEmpty()
+            && !isSuperAdmin(user)
             && user.isEmailVerified()
             && bootstrapAdminEmails.contains(normalizeEmail(user.getEmail()));
+    }
+
+    private boolean isSuperAdmin(UserRecord user) {
+        return !superAdminEmails.isEmpty()
+            && user.isEmailVerified()
+            && superAdminEmails.contains(normalizeEmail(user.getEmail()));
     }
 
     private UUID bootstrapAdminTenantId(UUID claimedTenantId, Set<UUID> existingTenants, UserRecord user) {
         if (claimedTenantId != null) {
             return claimedTenantId;
         }
-        return tenants.findBySubdomain(bootstrapAdminTenantSubdomain)
-            .map(Tenant::getId)
-            .filter(existingTenants::contains)
-            .orElseGet(() -> {
-                LOGGER.error(
-                    "Cannot bootstrap ADMIN claim for Firebase UID {}: tenant subdomain '{}' is not available",
-                    user.getUid(),
-                    bootstrapAdminTenantSubdomain
-                );
-                return null;
-            });
+        Optional<Tenant> configuredTenant = tenants.findBySubdomain(bootstrapAdminTenantSubdomain);
+        if (configuredTenant.isEmpty()) {
+            Tenant tenant = new Tenant();
+            tenant.setName("CareSync MedCare");
+            tenant.setSubdomain(bootstrapAdminTenantSubdomain);
+            tenant.setActive(true);
+            configuredTenant = Optional.of(tenants.saveAndFlush(tenant));
+            LOGGER.info("Created CareSync tenant '{}' during bootstrap provisioning", bootstrapAdminTenantSubdomain);
+        }
+        return configuredTenant.map(Tenant::getId).orElse(null);
     }
 
     private static String stringClaim(Object claim) {
@@ -213,6 +281,6 @@ public class FirebaseUserSyncService {
         return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     }
 
-    public record ProvisionedUser(UUID tenantId, String role, String specialty) { }
+    public record ProvisionedUser(UUID tenantId, String role, String specialty, String status) { }
     private record SyncUser(String uid, String email, String role, UUID tenantId, boolean disabled) { }
 }

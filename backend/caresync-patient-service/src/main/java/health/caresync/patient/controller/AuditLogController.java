@@ -2,6 +2,7 @@ package health.caresync.patient.controller;
 
 import health.caresync.common.exception.ForbiddenException;
 import health.caresync.common.security.CaresyncPrincipal;
+import health.caresync.common.security.TenantContext;
 import health.caresync.common.web.ApiResponse;
 import health.caresync.common.web.PageResponse;
 import health.caresync.patient.dto.AuditLogResponse;
@@ -28,7 +29,7 @@ public class AuditLogController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','PRIVACY_OFFICER') or hasAuthority('AUDIT_READ')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','PRIVACY_OFFICER') or hasAuthority('AUDIT_READ')")
     public ResponseEntity<ApiResponse<PageResponse<AuditLogResponse>>> list(
         @PathVariable UUID tenantId,
         @RequestParam(defaultValue = "0") int page,
@@ -36,7 +37,11 @@ public class AuditLogController {
         @AuthenticationPrincipal CaresyncPrincipal principal,
         HttpServletRequest servletRequest
     ) {
-        if (principal == null || !Objects.equals(principal.tenantId(), tenantId)) {
+        boolean selectedTenantForPlatformAdmin = principal != null
+            && "SUPER_ADMIN".equals(principal.role())
+            && Objects.equals(TenantContext.get(), tenantId);
+        if (principal == null
+            || (!Objects.equals(principal.tenantId(), tenantId) && !selectedTenantForPlatformAdmin)) {
             throw new ForbiddenException("Tenant access denied");
         }
         String correlationId = correlationId(servletRequest);

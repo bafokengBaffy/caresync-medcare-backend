@@ -80,6 +80,55 @@ class JwtFilterTest {
     }
 
     @Test
+    void forwardsSelectedTenantOnlyForVerifiedSuperAdmin() {
+        UUID selectedTenantId = UUID.randomUUID();
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+        JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
+            new VerifiedIdentity("platform-admin", null, "SUPER_ADMIN", "")
+        );
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest.get("/api/v1/admin/users")
+                .header("Authorization", "Bearer valid-token")
+                .header("X-Tenant-Id", selectedTenantId.toString())
+                .build()
+        );
+
+        filter.filter(exchange, forwardedExchange -> {
+            forwarded.set(forwardedExchange);
+            return Mono.empty();
+        }).block();
+
+        assertNotNull(forwarded.get());
+        assertEquals(
+            selectedTenantId.toString(),
+            forwarded.get().getRequest().getHeaders().getFirst("X-Tenant-Id")
+        );
+        assertEquals("SUPER_ADMIN", forwarded.get().getRequest().getHeaders().getFirst("X-Role"));
+    }
+
+    @Test
+    void rejectsMalformedSelectedTenantForSuperAdmin() {
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+        JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
+            new VerifiedIdentity("platform-admin", null, "SUPER_ADMIN", "")
+        );
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest.get("/api/v1/patients")
+                .header("Authorization", "Bearer valid-token")
+                .header("X-Tenant-Id", "not-a-uuid")
+                .build()
+        );
+
+        filter.filter(exchange, forwardedExchange -> {
+            forwarded.set(forwardedExchange);
+            return Mono.empty();
+        }).block();
+
+        assertEquals(HttpStatus.BAD_REQUEST, exchange.getResponse().getStatusCode());
+        assertNull(forwarded.get());
+    }
+
+    @Test
     void doesNotAllowProtectedPathsThatOnlyStartWithPublicHealthPath() {
         JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
             new VerifiedIdentity("user-1", UUID.randomUUID().toString(), "ADMIN", "")
@@ -92,5 +141,41 @@ class JwtFilterTest {
         filter.filter(exchange, ignored -> Mono.empty()).block();
 
         assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    void allowsAnonymousPostOnlyToTheExactPublicClinicBookingPath() {
+        JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
+            new VerifiedIdentity("unused", UUID.randomUUID().toString(), "PATIENT", "")
+        );
+        MockServerWebExchange booking = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest
+                .post("/api/v1/public/clinics/caresync/appointments").build()
+        );
+
+        filter.filter(booking, ignored -> Mono.empty()).block();
+
+        assertNull(booking.getResponse().getStatusCode());
+    }
+
+    @Test
+    void keepsOtherMethodsAndMalformedPublicClinicSlugsProtected() {
+        JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
+            new VerifiedIdentity("unused", UUID.randomUUID().toString(), "PATIENT", "")
+        );
+        MockServerWebExchange getBooking = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest
+                .get("/api/v1/public/clinics/caresync/appointments").build()
+        );
+        MockServerWebExchange malformedSlug = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest
+                .post("/api/v1/public/clinics/../appointments").build()
+        );
+
+        filter.filter(getBooking, ignored -> Mono.empty()).block();
+        filter.filter(malformedSlug, ignored -> Mono.empty()).block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, getBooking.getResponse().getStatusCode());
+        assertEquals(HttpStatus.UNAUTHORIZED, malformedSlug.getResponse().getStatusCode());
     }
 }

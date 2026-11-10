@@ -24,6 +24,8 @@
         <module>caresync-patient-service</module>
         <module>caresync-clinical-service</module>
         <module>caresync-billing-service</module>
+        <module>caresync-payroll-service</module>
+        <module>caresync-laboratory-service</module>
     </modules>
 
     <properties>

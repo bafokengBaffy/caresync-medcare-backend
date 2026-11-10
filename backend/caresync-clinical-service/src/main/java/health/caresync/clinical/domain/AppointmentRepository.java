@@ -13,4 +13,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
         UUID tenantId,
         UUID providerId
     );
+    List<Appointment> findTop100ByTenantIdAndPatientIdOrderByScheduledStartAsc(UUID tenantId, UUID patientId);
+    List<Appointment> findTop100ByTenantIdAndPatientIdAndProviderIdOrderByScheduledStartAsc(
+        UUID tenantId,
+        UUID patientId,
+        UUID providerId
+    );
 }

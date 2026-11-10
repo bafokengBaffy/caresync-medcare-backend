@@ -1,12 +1,21 @@
 package health.caresync.common.tenant;
 import jakarta.persistence.PrePersist;
-import health.caresync.common.security.TenantContext;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 
 public class TenantAwareEntityListener {
     @PrePersist
     public void prePersist(Object entity) {
-        if (entity instanceof TenantAware t && t.getTenantId() == null) {
-            t.setTenantId(TenantContext.require());
+        if (entity instanceof TenantAware tenantAware) {
+            TenantIsolationValidator.assignOrValidate(tenantAware);
+        }
+    }
+
+    @PreUpdate
+    @PreRemove
+    public void validateTenant(Object entity) {
+        if (entity instanceof TenantAware tenantAware) {
+            TenantIsolationValidator.validate(tenantAware);
         }
     }
 }
