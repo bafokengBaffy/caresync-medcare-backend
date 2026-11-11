@@ -10,6 +10,12 @@ caresync:
     enabled: ${FIREBASE_ENABLED:true}
   gateway:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+    consent:
+      enabled: ${CONSENT_ENFORCEMENT_ENABLED:false}
+    rate-limit:
+      enabled: ${CARESYNC_GATEWAY_RATE_LIMIT_ENABLED:true}
+      default-requests-per-minute: ${CARESYNC_GATEWAY_RATE_LIMIT_DEFAULT_RPM:600}
+      burst-capacity: ${CARESYNC_GATEWAY_RATE_LIMIT_BURST_CAPACITY:120}
 management:
   endpoints:
     web:

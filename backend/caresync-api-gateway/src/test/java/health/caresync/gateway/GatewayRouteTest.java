@@ -27,7 +27,7 @@ class GatewayRouteTest {
     @Test
     void routesTenantScopedPatientDocumentVersionsToPatientService() {
         assertTrue(matches(
-            "patients",
+            "patient-service",
             "/api/v1/tenants/32ec0ac7-8610-4656-9284-19cf47c05f79/patients/"
                 + "e043116a-99d7-4601-8204-1cb5627a940a/documents/"
                 + "ca95d70d-06fc-4dcf-a39b-807dcbe0f93c/versions"
@@ -36,25 +36,33 @@ class GatewayRouteTest {
 
     @Test
     void keepsAppointmentAndBillingPathsOnTheirExistingRoutes() {
-        assertTrue(matches("clinical", "/api/v1/appointments"));
-        assertTrue(matches("billing", "/api/v1/invoices"));
+        assertTrue(matches("clinical-service", "/api/v1/appointments"));
+        assertTrue(matches("billing-service", "/api/v1/invoices"));
     }
 
     @Test
     void routesPublicClinicBookingRequestsToClinicalService() {
-        assertTrue(matches("clinical", "/api/v1/public/clinics/caresync/appointments"));
+        assertTrue(matches("clinical-service", "/api/v1/public/clinics/caresync/appointments"));
     }
 
     @Test
     void routesAuthenticatedProfileRequestsToPatientService() {
-        assertTrue(matches("patients", "/api/v1/profile"));
-        assertTrue(matches("patients", "/api/v1/profile/image"));
+        assertTrue(matches("patient-service", "/api/v1/profile"));
+        assertTrue(matches("patient-service", "/api/v1/profile/image"));
     }
 
     @Test
     void routesPatientSelfServiceRequestsToPatientService() {
-        assertTrue(matches("patients", "/api/v1/patient/me"));
-        assertTrue(matches("patients", "/api/v1/patient/me/records"));
+        assertTrue(matches("patient-service", "/api/v1/patient/me"));
+        assertTrue(matches("patient-service", "/api/v1/patient/me/records"));
+    }
+
+    @Test
+    void routesClinicalAndBillingControllerPathsToTheirServices() {
+        assertTrue(matches("clinical-service", "/api/v1/nursing-assessments"));
+        assertTrue(matches("clinical-service", "/api/v1/diagnosis-codes"));
+        assertTrue(matches("billing-service", "/api/v1/refunds"));
+        assertTrue(matches("billing-service", "/api/v1/medical-aid-claims"));
     }
 
     private boolean matches(String routeId, String path) {
@@ -71,7 +79,7 @@ class GatewayRouteTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @Import(health.caresync.gateway.config.GatewayRoutesConfig.class)
+    @Import(health.caresync.gateway.router.GatewayRouterConfig.class)
     static class RouteTestApplication {
         @Bean
         health.caresync.gateway.config.GatewayTokenVerifier tokenVerifier() {

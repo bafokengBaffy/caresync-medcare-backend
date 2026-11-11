@@ -1,4 +1,5 @@
-server: { port: ${PORT:8083} }
+server:
+  port: ${PORT:8083}
 spring:
   application: { name: caresync-billing-service }
   datasource:
@@ -6,7 +7,8 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:${SUPABASE_DB_USER:postgres}}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:${SUPABASE_DB_PASSWORD:password}}}
   jpa: { hibernate: { ddl-auto: validate } }
-firebase: { service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account.json} }
+firebase:
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:classpath:firebase-service-account.json}
 caresync:
   firebase:
     enabled: ${FIREBASE_ENABLED:true}

@@ -29,7 +29,7 @@ public class AuditLogController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','PRIVACY_OFFICER') or hasAuthority('AUDIT_READ')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TENANT_ADMIN','PRIVACY_OFFICER') or hasAuthority('AUDIT_READ')")
     public ResponseEntity<ApiResponse<PageResponse<AuditLogResponse>>> list(
         @PathVariable UUID tenantId,
         @RequestParam(defaultValue = "0") int page,

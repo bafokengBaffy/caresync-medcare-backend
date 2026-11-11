@@ -26,9 +26,20 @@ public class CorsConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id"));
-        configuration.setExposedHeaders(List.of("X-Request-Id"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "X-API-Version",
+            "X-Correlation-Id",
+            "X-Request-Id",
+            "X-Tenant-Id"
+        ));
+        configuration.setExposedHeaders(List.of(
+            "X-API-Version",
+            "X-Correlation-Id",
+            "X-Request-Id"
+        ));
+        configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

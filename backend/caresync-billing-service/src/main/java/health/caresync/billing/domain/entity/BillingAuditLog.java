@@ -58,6 +58,11 @@ public class BillingAuditLog implements TenantAware {
     public void setTenantId(UUID tenantId) { this.tenantId = tenantId; }
 
     public UUID getId() { return id; }
+    public BillingAuditAction getAction() { return action; }
+    public String getResourceType() { return resourceType; }
+    public UUID getResourceId() { return resourceId; }
+    public String getActorName() { return actorName; }
+    public String getDetails() { return details; }
     public void setAction(BillingAuditAction action) { this.action = action; }
     public void setResourceType(String resourceType) { this.resourceType = resourceType; }
     public void setResourceId(UUID resourceId) { this.resourceId = resourceId; }

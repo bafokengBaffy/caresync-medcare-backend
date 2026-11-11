@@ -1,0 +1,54 @@
+# Test profile — no external services reachable.
+# OWASP: no real credentials; dummy values only.
+spring:
+  datasource:
+    url: jdbc:h2:mem:billing-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        auto-startup: false
+  cloud:
+    gcp:
+      firestore:
+        enabled: false
+
+caresync:
+  billing:
+    package:
+      max-discount-fraction: 0.30
+      partial-redemption-allowed: true
+      min-consumed-fraction-for-refund: 0.50
+      currency: ZAR
+      max-package-price: 1000000.00
+    rabbit:
+      exchange: caresync.billing
+      queue:
+        invoice-issued: caresync.billing.invoice.issued
+        payment-received: caresync.billing.payment.received
+      routing:
+        invoice-issued: invoice.issued
+        payment-received: payment.received
+
+logging:
+  level:
+    root: WARN
+    health.caresync: INFO
+  pattern:
+    console: "%d{ISO8601} %-5level [%X{correlationId:-}] %logger{36} - %msg%n"

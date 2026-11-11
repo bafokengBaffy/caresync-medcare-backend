@@ -3,6 +3,7 @@ package health.caresync.gateway;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import health.caresync.gateway.config.JwtAuthGatewayFilter;
 import health.caresync.gateway.config.VerifiedIdentity;
@@ -33,9 +34,11 @@ class JwtFilterTest {
     void forwardsOnlyVerifiedTenantAndRoleClaims() {
         UUID tenantId = UUID.randomUUID();
         AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+        VerifiedIdentity verifiedIdentity =
+            new VerifiedIdentity("verified-user", tenantId.toString(), "ADMIN", "CARDIOLOGY");
         JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token -> {
             assertEquals("valid-token", token);
-            return new VerifiedIdentity("verified-user", tenantId.toString(), "ADMIN", "CARDIOLOGY");
+            return verifiedIdentity;
         });
         MockServerWebExchange exchange = MockServerWebExchange.from(
             org.springframework.mock.http.server.reactive.MockServerHttpRequest.get("/api/v1/patients")
@@ -56,6 +59,12 @@ class JwtFilterTest {
         assertEquals("verified-user", forwarded.get().getRequest().getHeaders().getFirst("X-User-Id"));
         assertEquals("ADMIN", forwarded.get().getRequest().getHeaders().getFirst("X-Role"));
         assertEquals("CARDIOLOGY", forwarded.get().getRequest().getHeaders().getFirst("X-Specialty"));
+        assertSame(
+            verifiedIdentity,
+            forwarded.get().getAttribute(
+                health.caresync.gateway.filter.ConsentVerificationFilter.VERIFIED_IDENTITY_ATTR
+            )
+        );
     }
 
     @Test
@@ -177,5 +186,46 @@ class JwtFilterTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, getBooking.getResponse().getStatusCode());
         assertEquals(HttpStatus.UNAUTHORIZED, malformedSlug.getResponse().getStatusCode());
+    }
+
+    @Test
+    void restrictsPayrollToIdentitiesWithPayrollPermissions() {
+        UUID tenantId = UUID.randomUUID();
+        JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
+            new VerifiedIdentity("tenant-admin", tenantId.toString(), "TENANT_ADMIN", "")
+        );
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest
+                .get("/api/v1/payroll/reports")
+                .header("Authorization", "Bearer valid-token")
+                .build()
+        );
+
+        filter.filter(exchange, ignored -> Mono.empty()).block();
+
+        assertEquals(HttpStatus.FORBIDDEN, exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    void allowsVerifiedSuperAdminsToAccessPayroll() {
+        UUID tenantId = UUID.randomUUID();
+        JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
+            new VerifiedIdentity("platform-admin", null, "SUPER_ADMIN", "")
+        );
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+            org.springframework.mock.http.server.reactive.MockServerHttpRequest
+                .get("/api/v1/payroll/reports")
+                .header("Authorization", "Bearer valid-token")
+                .header("X-Tenant-Id", tenantId.toString())
+                .build()
+        );
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+
+        filter.filter(exchange, forwardedExchange -> {
+            forwarded.set(forwardedExchange);
+            return Mono.empty();
+        }).block();
+
+        assertEquals(tenantId.toString(), forwarded.get().getRequest().getHeaders().getFirst("X-Tenant-Id"));
     }
 }

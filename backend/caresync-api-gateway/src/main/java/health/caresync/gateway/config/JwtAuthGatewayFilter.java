@@ -1,9 +1,12 @@
 package health.caresync.gateway.config;
 
-import com.google.firebase.auth.FirebaseAuthException;
+import health.caresync.gateway.filter.ConsentVerificationFilter;
+import health.caresync.gateway.service.PermissionCheckService;
+import health.caresync.gateway.service.TokenValidationService;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -11,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 @Component
 public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
@@ -24,10 +26,20 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
             "RECEPTION", "FINANCE", "MANAGER", "CONSENT_MANAGER", "CLINICIAN",
             "PRIVACY_OFFICER", "RECEPTIONIST"
         );
-    private final GatewayTokenVerifier tokenVerifier;
+    private final TokenValidationService tokenValidationService;
+    private final PermissionCheckService permissionCheckService;
+
+    @Autowired
+    public JwtAuthGatewayFilter(
+        TokenValidationService tokenValidationService,
+        PermissionCheckService permissionCheckService
+    ) {
+        this.tokenValidationService = tokenValidationService;
+        this.permissionCheckService = permissionCheckService;
+    }
 
     public JwtAuthGatewayFilter(GatewayTokenVerifier tokenVerifier) {
-        this.tokenVerifier = tokenVerifier;
+        this(new TokenValidationService(tokenVerifier), new PermissionCheckService());
     }
 
     @Override
@@ -41,18 +53,12 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
         }
 
         String authorization = exchange.getRequest().getHeaders().getFirst("Authorization");
-        if (authorization == null || !authorization.startsWith("Bearer ") || authorization.length() == 7) {
-            return unauthorized(exchange);
-        }
-
-        return Mono.fromCallable(() -> tokenVerifier.verify(authorization.substring(7)))
-            .subscribeOn(Schedulers.boundedElastic())
-            .onErrorMap(error -> error instanceof FirebaseAuthException
-                || error instanceof IllegalStateException
-                ? new InvalidBearerTokenException()
-                : error)
+        return tokenValidationService.validate(authorization)
             .flatMap(token -> forwardWithVerifiedClaims(exchange, chain, token))
-            .onErrorResume(InvalidBearerTokenException.class, error -> unauthorized(exchange));
+            .onErrorResume(
+                TokenValidationService.TokenInvalidException.class,
+                error -> unauthorized(exchange)
+            );
     }
 
     private Mono<Void> forwardWithVerifiedClaims(
@@ -64,6 +70,7 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
+        String path = exchange.getRequest().getURI().getPath();
         String tenantText = identity.tenantId();
         String role = identity.role();
         boolean platformAdmin = "SUPER_ADMIN".equals(role);
@@ -89,6 +96,17 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
 
         UUID verifiedTenantId = tenantId;
         String specialty = identity.specialty() == null ? "" : identity.specialty();
+        String requiredPermission = requiredPermission(
+            path,
+            exchange.getRequest().getMethod() == null
+                ? null
+                : exchange.getRequest().getMethod().name()
+        );
+        if (requiredPermission != null
+            && !permissionCheckService.isAuthorized(identity, requiredPermission, selectedTenantText)) {
+            return forbidden(exchange);
+        }
+
         var request = exchange.getRequest().mutate().headers(headers -> {
             headers.remove("X-Tenant-Id");
             headers.remove("X-User-Id");
@@ -99,7 +117,17 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
             headers.set("X-Role", role);
             headers.set("X-Specialty", specialty);
         }).build();
+        exchange.getAttributes().put(ConsentVerificationFilter.VERIFIED_IDENTITY_ATTR, identity);
         return chain.filter(exchange.mutate().request(request).build());
+    }
+
+    private String requiredPermission(String path, String method) {
+        if (isPathOrChild(path, "/api/v1/payroll")) {
+            return "GET".equals(method) || "HEAD".equals(method)
+                ? "payroll:read"
+                : "payroll:write";
+        }
+        return null;
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange) {
@@ -109,6 +137,11 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
 
     private Mono<Void> badRequest(ServerWebExchange exchange) {
         exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+        return exchange.getResponse().setComplete();
+    }
+
+    private Mono<Void> forbidden(ServerWebExchange exchange) {
+        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
         return exchange.getResponse().setComplete();
     }
 
@@ -131,7 +164,4 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
         return -10;
     }
 
-    private static final class InvalidBearerTokenException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-    }
 }

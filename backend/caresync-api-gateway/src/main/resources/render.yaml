@@ -1,0 +1,138 @@
+# =============================================================================
+# CareSync API Gateway – Render blueprint
+# =============================================================================
+# Docs: https://render.com/docs/blueprint-spec
+#
+# OWASP alignment:
+#   A02 – Crypto: all secrets via `sync: false` (never committed).
+#   A05 – Misconfiguration: health checks, autoscaling caps, TLS enforced.
+#   A09 – Logging: JSON logs; no PII.
+#   A04 – Insecure design: bounded autoscaling; no privileged containers.
+#   A08 – Data integrity: image pinned by digest semantics via commit SHA.
+# =============================================================================
+
+services:
+  - type: web
+    name: caresync-api-gateway
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    branch: main
+    autoDeploy: true
+    rootDir: backend
+    dockerfilePath: ./caresync-api-gateway/Dockerfile
+    dockerContext: ./caresync-api-gateway
+
+    # --- Health checks (A05) -------------------------------------------------
+    healthCheckPath: /actuator/health/liveness
+    readinessCheckPath: /actuator/health/readiness
+    healthCheckGracePeriod: 60
+
+    # --- Scaling (A04: bounded to prevent cost/DoS blowout) ------------------
+    numInstances: 1
+    autoscaling:
+      min: 1
+      max: 3
+      targetCPUPercent: 65
+      targetMemoryPercent: 75
+
+    # --- Environment ---------------------------------------------------------
+    envVars:
+      # ---- Runtime ----
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_OPTS
+        value: >-
+          -XX:MaxRAMPercentage=75
+          -XX:+UseContainerSupport
+          -XX:+ExitOnOutOfMemoryError
+          -Djava.security.egd=file:/dev/urandom
+          -Dfile.encoding=UTF-8
+      - key: SERVER_PORT
+        value: "8080"
+      - key: SERVER_FORWARD_HEADERS_STRATEGY
+        value: "framework"          # only trust Render's ingress proxy
+      - key: SERVER_SHUTDOWN
+        value: "graceful"
+      - key: SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
+        value: "30s"
+
+      # ---- Security / TLS ----------------------------------------------------
+      - key: SERVER_SSL_ENABLED
+        value: "false"                # Render terminates TLS at the edge
+      - key: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - key: MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS
+        value: "never"                # A05: no topology leak
+      - key: MANAGEMENT_SERVER_PORT
+        value: "8081"                 # separate management port
+
+      # ---- Trust boundaries (A01/A07) ---------------------------------------
+      - key: SPRING_CLOUD_GATEWAY_TRUSTED_PROXIES
+        value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"   # Render internal only
+
+      # ---- Downstream service URLs (internal, never user-controlled) --------
+      - key: CARESYNC_SERVICES_PATIENT_URI
+        value: "http://caresync-patient-service:8081"
+      - key: CARESYNC_SERVICES_CLINICAL_URI
+        value: "http://caresync-clinical-service:8082"
+      - key: CARESYNC_SERVICES_BILLING_URI
+        value: "http://caresync-billing-service:8083"
+      - key: CARESYNC_SERVICES_LABORATORY_URI
+        value: "http://caresync-laboratory-service:8084"
+      - key: CARESYNC_SERVICES_PAYROLL_URI
+        value: "http://caresync-payroll-service:8085"
+
+      # ---- Rate limiting (A04) ----------------------------------------------
+      - key: CARESYNC_GATEWAY_RATE_LIMIT_DEFAULT_RPM
+        value: "600"
+      - key: CARESYNC_GATEWAY_RATE_LIMIT_BURST_CAPACITY
+        value: "120"
+
+      # ---- JWT / Firebase (public config only; secret below) ----------------
+      - key: CARESYNC_GATEWAY_SECURITY_TRUSTED_ISSUERS
+        value: "https://securetoken.google.com/caresync-medcare"
+      - key: CARESYNC_GATEWAY_SECURITY_EXPECTED_AUDIENCE
+        value: "caresync-medcare"
+      - key: CARESYNC_GATEWAY_SECURITY_CLOCK_SKEW_SECONDS
+        value: "30"
+      - key: CARESYNC_GATEWAY_SECURITY_MAX_TOKEN_LENGTH
+        value: "8192"
+
+      # ---- Secrets (A02: sync:false => prompted at deploy, never in git) ----
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: CARESYNC_GATEWAY_JWT_VERIFIER_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+
+      # ---- Observability -----------------------------------------------------
+      - key: LOGGING_LEVEL_ROOT
+        value: "INFO"
+      - key: LOGGING_LEVEL_HEALTH_CARESYNC_GATEWAY
+        value: "INFO"
+      - key: LOGGING_PATTERN_CONSOLE
+        value: >-
+          {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}","level":"%level",
+          "logger":"%logger{36}","correlationId":"%X{correlationId:-}",
+          "msg":"%replace(%msg){'[\r\n\t]','_'}","thread":"%thread"}
+
+    # --- Disk: none (stateless gateway, A05) ---------------------------------
+    disk:
+
+    # --- HTTP/2 + TLS posture (A02) -----------------------------------------
+    # Render enforces HTTPS at the edge; redirect HTTP -> HTTPS.
+    routes:
+      - type: redirect
+        source: "/*"
+        destination: "https://caresync-api-gateway.onrender.com/*"
+        statusCode: 301

@@ -37,13 +37,30 @@ envVarGroups:
         sync: false
       - key: SUPABASE_STORAGE_BUCKET
         value: caresync-bucket
+      - key: SUPABASE_PROFILE_IMAGE_BUCKET
+        value: caresync-bucket
+
+  - name: caresync-cloudamqp
+    envVars:
+      - key: SPRING_RABBITMQ_HOST
+        value: toucan.lmq.cloudamqp.com
+      - key: SPRING_RABBITMQ_PORT
+        value: "5671"
+      - key: SPRING_RABBITMQ_USERNAME
+        value: psczzhvm
+      - key: SPRING_RABBITMQ_PASSWORD
+        sync: false
+      - key: SPRING_RABBITMQ_VIRTUAL_HOST
+        value: psczzhvm
+      - key: SPRING_RABBITMQ_SSL_ENABLED
+        value: "true"
 
 services:
   - type: web
     name: caresync-api-gateway
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./backend/caresync-api-gateway/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
@@ -69,12 +86,22 @@ services:
           type: web
           name: caresync-billing-service
           property: host
+      - key: LABORATORY_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-laboratory-service
+          property: host
+      - key: PAYROLL_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-payroll-service
+          property: host
 
   - type: web
     name: caresync-patient-service
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./backend/caresync-patient-service/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
@@ -90,30 +117,72 @@ services:
     name: caresync-clinical-service
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./backend/caresync-clinical-service/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
       - fromGroup: caresync-firebase
       - fromGroup: caresync-database
+      - fromGroup: caresync-cloudamqp
       - key: SERVICE_NAME
         value: caresync-clinical-service
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: FIRESTORE_ENABLED
         value: "true"
+      - key: SPRING_FLYWAY_ENABLED
+        value: "false"
 
   - type: web
     name: caresync-billing-service
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./backend/caresync-billing-service/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - fromGroup: caresync-cloudamqp
+      - key: SERVICE_NAME
+        value: caresync-billing-service
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+  - type: web
+    name: caresync-laboratory-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/caresync-laboratory-service/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
       - fromGroup: caresync-firebase
       - fromGroup: caresync-database
       - key: SERVICE_NAME
-        value: caresync-billing-service
+        value: caresync-laboratory-service
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: DB_SCHEMA
+        value: caresync_laboratory
+      - key: DISCOVERY_ENABLED
+        value: "false"
+
+  - type: web
+    name: caresync-payroll-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/caresync-payroll-service/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: caresync-firebase
+      - fromGroup: caresync-database
+      - key: SERVICE_NAME
+        value: caresync-payroll-service
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_SCHEMA
+        value: caresync_payroll
+      - key: DISCOVERY_ENABLED
+        value: "false"

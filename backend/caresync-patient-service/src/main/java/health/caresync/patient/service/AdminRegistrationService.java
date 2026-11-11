@@ -12,12 +12,14 @@ import health.caresync.common.tenant.TenantRlsContext;
 import health.caresync.common.web.PageResponse;
 import health.caresync.patient.domain.entity.Tenant;
 import health.caresync.patient.domain.repository.TenantRepository;
+import health.caresync.patient.dto.admin.BulkFixPendingActivationsRequest;
 import health.caresync.patient.dto.admin.RegistrationRequestResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -282,6 +284,78 @@ public class AdminRegistrationService {
         );
         return new PageResponse<>(content, page, size, total == null ? 0 : total);
     }
+
+    @Transactional
+    public BulkFixResult bulkFixPendingActivations(
+        CaresyncPrincipal actor,
+        BulkFixPendingActivationsRequest request
+    ) {
+        if (actor == null || !"SUPER_ADMIN".equals(actor.role())) {
+            throw new ForbiddenException("Super-admin role required");
+        }
+        tenantRlsContext.apply(actor, null);
+        int fixed = 0;
+        List<String> skipped = new ArrayList<>();
+        for (String firebaseUid : request.ids().stream().distinct().toList()) {
+            if (firebaseUid == null || firebaseUid.isBlank() || firebaseUid.length() > 128) {
+                skipped.add("Invalid user identifier");
+                continue;
+            }
+            RoleAssignment assignment = jdbcTemplate.query(
+                """
+                    SELECT role, tenant_id FROM user_role_assignments
+                    WHERE firebase_uid = ? AND tenant_id IS NOT NULL AND role <> 'SUPER_ADMIN'
+                    ORDER BY assigned_at DESC LIMIT 1
+                    """,
+                resultSet -> resultSet.next()
+                    ? new RoleAssignment(resultSet.getString("role"), resultSet.getObject("tenant_id", UUID.class))
+                    : null,
+                firebaseUid
+            );
+            if (assignment == null) {
+                skipped.add(firebaseUid + ": no existing tenant role assignment to restore");
+                continue;
+            }
+
+            UserRecord firebaseUser;
+            try {
+                firebaseUser = firebaseAuth.getUser(firebaseUid);
+            } catch (FirebaseAuthException exception) {
+                if (exception.getAuthErrorCode() == AuthErrorCode.USER_NOT_FOUND) {
+                    skipped.add(firebaseUid + ": Firebase account not found");
+                    continue;
+                }
+                throw new IllegalStateException("Could not load Firebase account " + firebaseUid, exception);
+            }
+            Map<String, Object> claims = new HashMap<>(firebaseUser.getCustomClaims());
+            claims.put("role", assignment.role());
+            claims.put("tenant_id", assignment.tenantId().toString());
+            List<String> permissions = jdbcTemplate.query(
+                "SELECT permission FROM user_permissions WHERE firebase_uid = ? AND tenant_id = ? ORDER BY permission",
+                (resultSet, rowNumber) -> resultSet.getString(1),
+                firebaseUid, assignment.tenantId()
+            );
+            if (permissions.isEmpty()) {
+                claims.remove("permissions");
+            } else {
+                claims.put("permissions", permissions);
+            }
+            try {
+                firebaseAuth.setCustomUserClaims(firebaseUid, claims);
+            } catch (FirebaseAuthException exception) {
+                throw new IllegalStateException("Could not restore Firebase claims for " + firebaseUid, exception);
+            }
+            jdbcTemplate.update(
+                "UPDATE firebase_users SET role = ?, tenant_id = ?, synced_at = NOW() WHERE firebase_uid = ?",
+                assignment.role(), assignment.tenantId(), firebaseUid
+            );
+            fixed++;
+        }
+        return new BulkFixResult(fixed, skipped.size(), skipped);
+    }
+
+    private record RoleAssignment(String role, UUID tenantId) { }
+    public record BulkFixResult(int fixed, int skipped, List<String> details) { }
 
     private RegistrationRequestResponse findRequest(
         CaresyncPrincipal actor,

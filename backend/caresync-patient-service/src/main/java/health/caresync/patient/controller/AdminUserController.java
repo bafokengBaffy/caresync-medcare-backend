@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 
@@ -86,7 +87,10 @@ public class AdminUserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(user));
     }
 
-    @PatchMapping("/{firebaseUid}/role")
+    @org.springframework.web.bind.annotation.RequestMapping(
+        path = "/{firebaseUid}/role",
+        method = {RequestMethod.PATCH, RequestMethod.PUT}
+    )
     public ResponseEntity<ApiResponse<AdminUserResponse>> updateRole(
         @AuthenticationPrincipal CaresyncPrincipal actor,
         @PathVariable String firebaseUid,
@@ -119,6 +123,18 @@ public class AdminUserController {
         HttpServletRequest servletRequest
     ) {
         adminUserService.softDelete(actor, firebaseUid, tenantId, servletRequest);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{firebaseUid}/sessions")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Void> revokeSessions(
+        @AuthenticationPrincipal CaresyncPrincipal actor,
+        @PathVariable String firebaseUid,
+        @RequestParam(required = false) UUID tenantId,
+        HttpServletRequest servletRequest
+    ) {
+        adminUserService.revokeSessions(actor, firebaseUid, tenantId, servletRequest);
         return ResponseEntity.noContent().build();
     }
 }

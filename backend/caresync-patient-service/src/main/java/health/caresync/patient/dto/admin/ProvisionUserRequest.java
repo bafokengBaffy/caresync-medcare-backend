@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public record ProvisionUserRequest(
-    @NotBlank
     @Pattern(regexp = "[A-Za-z0-9._:-]{1,128}")
     String firebaseUid,
     @NotBlank

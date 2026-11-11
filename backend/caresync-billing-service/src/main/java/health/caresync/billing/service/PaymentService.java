@@ -9,6 +9,8 @@ import health.caresync.billing.dto.PaymentCreateRequest;
 import health.caresync.common.tenant.TenantRlsContext;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -78,6 +80,12 @@ public class PaymentService {
         }
         invoices.save(invoice);
         return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Payment> list(Pageable pageable) {
+        UUID tenantId = tenantRlsContext.apply();
+        return payments.findAllByTenantId(tenantId, pageable);
     }
 
     private String normalizeReference(String reference) {

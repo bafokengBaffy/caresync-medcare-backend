@@ -2,58 +2,50 @@ package health.caresync.common.security;
 
 import java.util.UUID;
 
+/**
+ * Thread-local tenant context. Always clear in finally/afterCompletion
+ * to prevent context leak between pooled threads (OWASP A01).
+ */
 public final class TenantContext {
-    private static final ThreadLocal<UUID> CURRENT_TENANT = new ThreadLocal<>();
-    private static final ThreadLocal<String> CURRENT_USER = new ThreadLocal<>();
-    private static final ThreadLocal<String> CURRENT_ROLE = new ThreadLocal<>();
+    private static final ThreadLocal<String> TENANT_ID = new ThreadLocal<>();
+    private static final ThreadLocal<String> USER_ID = new ThreadLocal<>();
+    private static final ThreadLocal<String> ROLE = new ThreadLocal<>();
 
-    private TenantContext() {
-    }
+    private TenantContext() {}
 
-    public static void set(UUID tenantId) {
-        CURRENT_TENANT.set(tenantId);
-    }
+    public static void setTenantId(String id) { TENANT_ID.set(id); }
+    public static String getTenantId() { return TENANT_ID.get(); }
+
+    public static void set(UUID id) { setTenantId(id == null ? null : id.toString()); }
 
     public static UUID get() {
-        return CURRENT_TENANT.get();
+        String tenantId = getTenantId();
+        if (tenantId == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(tenantId);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     public static UUID require() {
-        UUID tenantId = CURRENT_TENANT.get();
+        UUID tenantId = get();
         if (tenantId == null) {
-            throw new IllegalStateException("Tenant context is not available");
+            throw new IllegalStateException("A valid tenant ID is required");
         }
         return tenantId;
     }
 
-    public static void setTenantId(String tenantId) {
-        CURRENT_TENANT.set(tenantId == null || tenantId.isBlank() ? null : UUID.fromString(tenantId));
-    }
-
-    public static String getTenantId() {
-        UUID tenantId = CURRENT_TENANT.get();
-        return tenantId == null ? null : tenantId.toString();
-    }
-
-    public static void setUserId(String userId) {
-        CURRENT_USER.set(userId);
-    }
-
-    public static String getUserId() {
-        return CURRENT_USER.get();
-    }
-
-    public static void setRole(String role) {
-        CURRENT_ROLE.set(role);
-    }
-
-    public static String getRole() {
-        return CURRENT_ROLE.get();
-    }
+    public static void setUserId(String userId) { USER_ID.set(userId); }
+    public static String getUserId() { return USER_ID.get(); }
+    public static void setRole(String role) { ROLE.set(role); }
+    public static String getRole() { return ROLE.get(); }
 
     public static void clear() {
-        CURRENT_TENANT.remove();
-        CURRENT_USER.remove();
-        CURRENT_ROLE.remove();
+        TENANT_ID.remove();
+        USER_ID.remove();
+        ROLE.remove();
     }
 }

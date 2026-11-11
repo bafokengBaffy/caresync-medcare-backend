@@ -4,6 +4,7 @@ import health.caresync.common.security.CaresyncPrincipal;
 import health.caresync.common.web.ApiResponse;
 import health.caresync.common.web.PageResponse;
 import health.caresync.patient.dto.admin.RegistrationRequestResponse;
+import health.caresync.patient.dto.admin.BulkFixPendingActivationsRequest;
 import health.caresync.patient.dto.admin.RejectRegistrationRequest;
 import health.caresync.patient.dto.admin.ReviewRegistrationRequest;
 import health.caresync.patient.service.AdminRegistrationService;
@@ -82,6 +83,17 @@ public class AdminRegistrationController {
         ) {
         return ResponseEntity.ok(ApiResponse.ok(
             registrationService.pendingActivations(actor, tenantId, page, size)
+        ));
+    }
+
+    @PostMapping("/pending-activations/bulk-fix")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<AdminRegistrationService.BulkFixResult>> bulkFixPendingActivations(
+        @AuthenticationPrincipal CaresyncPrincipal actor,
+        @Valid @RequestBody BulkFixPendingActivationsRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+            registrationService.bulkFixPendingActivations(actor, request)
         ));
     }
 }

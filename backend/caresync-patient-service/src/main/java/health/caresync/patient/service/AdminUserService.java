@@ -191,11 +191,14 @@ public class AdminUserService {
         requireProviderData(request.role(), request.fullName(), request.specialty());
         requirePatientLink(request.role(), request.patientId());
         validatePermissions(request.permissions());
-        UserRecord firebaseUser = getFirebaseUser(request.firebaseUid());
-        if (!normalize(firebaseUser.getEmail()).equals(normalize(request.email()))) {
+        tenantRlsContext.apply(actor, tenantId);
+        boolean createFirebaseUser = request.firebaseUid() == null || request.firebaseUid().isBlank();
+        UserRecord firebaseUser = createFirebaseUser
+            ? createFirebaseUser(request.email(), request.fullName())
+            : getFirebaseUser(request.firebaseUid());
+        if (!createFirebaseUser && !normalize(firebaseUser.getEmail()).equals(normalize(request.email()))) {
             throw new ValidationException("The selected Firebase account email does not match the request");
         }
-        tenantRlsContext.apply(actor, tenantId);
 
         Map<String, Object> claims = new HashMap<>(firebaseUser.getCustomClaims());
         claims.put("role", request.role());
@@ -204,8 +207,8 @@ public class AdminUserService {
         if (tenantId == null) claims.remove("tenant_id");
         else claims.put("tenant_id", tenantId.toString());
 
-        setClaims(firebaseUser.getUid(), claims);
         try {
+            setClaims(firebaseUser.getUid(), claims);
             upsertUser(firebaseUser.getUid(), normalize(firebaseUser.getEmail()), request.role(), tenantId,
                 firebaseUser.isDisabled(), request.fullName(), request.phone());
             replaceRoleAssignment(firebaseUser.getUid(), request.role(), tenantId, actor.userId());
@@ -216,10 +219,33 @@ public class AdminUserService {
                 actor, tenantId, "USER_PROVISIONED", "USER", firebaseUser.getUid(), servletRequest
             );
         } catch (RuntimeException exception) {
-            restoreClaims(firebaseUser.getUid(), firebaseUser.getCustomClaims(), exception);
+            if (createFirebaseUser) {
+                try {
+                    firebaseAuth.deleteUser(firebaseUser.getUid());
+                } catch (FirebaseAuthException cleanupFailure) {
+                    exception.addSuppressed(cleanupFailure);
+                }
+            } else {
+                restoreClaims(firebaseUser.getUid(), firebaseUser.getCustomClaims(), exception);
+            }
             throw exception;
         }
         return get(actor, firebaseUser.getUid(), tenantId);
+    }
+
+    private UserRecord createFirebaseUser(String email, String fullName) {
+        try {
+            return firebaseAuth.createUser(
+                new UserRecord.CreateRequest()
+                    .setEmail(normalize(email))
+                    .setDisplayName(fullName.trim())
+            );
+        } catch (FirebaseAuthException exception) {
+            if (exception.getAuthErrorCode() == AuthErrorCode.EMAIL_ALREADY_EXISTS) {
+                throw new ValidationException("A Firebase account already exists for this email; use account lookup");
+            }
+            throw new IllegalStateException("Could not create Firebase account", exception);
+        }
     }
 
     @Transactional
@@ -317,6 +343,31 @@ public class AdminUserService {
             "USER", firebaseUid, servletRequest
         );
         return get(actor, firebaseUid, tenantId);
+    }
+
+    @Transactional
+    public void revokeSessions(
+        CaresyncPrincipal actor,
+        String firebaseUid,
+        UUID requestedTenantId,
+        HttpServletRequest servletRequest
+    ) {
+        requireUid(firebaseUid);
+        UUID tenantId = authorizedTenant(actor, requestedTenantId, false);
+        tenantRlsContext.apply(actor, tenantId);
+        AdminUserResponse existing = findUser(firebaseUid, tenantId)
+            .orElseThrow(() -> new NotFoundException("User not found"));
+        if (existing.tenantId() != null && !Objects.equals(existing.tenantId(), tenantId)) {
+            throw new ForbiddenException("Tenant access denied");
+        }
+        try {
+            firebaseAuth.revokeRefreshTokens(firebaseUid);
+        } catch (FirebaseAuthException exception) {
+            throw new IllegalStateException("Could not revoke Firebase sessions", exception);
+        }
+        auditService.recordAdministrativeAction(
+            actor, tenantId, "USER_SESSIONS_REVOKED", "USER", firebaseUid, servletRequest
+        );
     }
 
     @Transactional

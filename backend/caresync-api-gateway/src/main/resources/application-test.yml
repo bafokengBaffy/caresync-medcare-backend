@@ -1,0 +1,171 @@
+# =============================================================================
+# CareSync API Gateway – TEST profile
+# =============================================================================
+# OWASP alignment:
+#   A02 – Crypto: no secrets in repo; all sensitive values from env.
+#   A05 – Misconfiguration: safe defaults, no prod endpoints in test.
+#   A09 – Logging: reduced verbosity, no PII.
+#   A04 – Insecure design: bounded timeouts and rate limits.
+#
+# IMPORTANT: This profile is for CI / automated tests only.
+# It must never be deployed to a public environment.
+# =============================================================================
+
+spring:
+  application:
+    name: caresync-api-gateway
+
+  # --- Required to avoid auto-config triggering prod side effects ---
+  main:
+    banner-mode: "off"
+    web-application-type: reactive
+
+  # ---------------------------------------------------------------------------
+  # Spring Cloud Gateway – test routing
+  # ---------------------------------------------------------------------------
+  cloud:
+    gateway:
+      # Only allow safe protocols (A10 SSRF).
+      httpclient:
+        connect-timeout: 1000        # ms – fast failure for tests
+        response-timeout: 5s
+        pool:
+          max-connections: 20
+          max-idle-time: 10s
+          max-life-time: 60s
+
+      # Do NOT trust any forwarded headers by default (A01/A07).
+      # Tests bypass any upstream proxy.
+      trusted-proxies: ""
+
+      # Discovery is disabled in tests – routes come from GatewayRouterConfig (static).
+      discovery:
+        locator:
+          enabled: false
+
+      # Disable default filters that could hide route misconfigurations.
+      default-filters: []
+
+  # ---------------------------------------------------------------------------
+  # Security – actuator
+  # ---------------------------------------------------------------------------
+  security:
+    user:
+      name: test-admin
+      # Password intentionally not set here; tests override or disable via env.
+      roles: "ACTUATOR"
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        # In test, only health + info exposed (A01/A05).
+        include: "health,info"
+        exclude: "*"
+  endpoint:
+    health:
+      show-details: "never"         # never leak internal topology (A05)
+      probes:
+        enabled: true
+    info:
+      enabled: false
+  info:
+    env:
+      enabled: false
+
+# ---------------------------------------------------------------------------
+# Resilience4j – deterministic test thresholds
+# ---------------------------------------------------------------------------
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 80
+        slow-call-duration-threshold: 1s
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: false
+    instances:
+      default:
+        base-config: default
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 3s
+        cancel-running-future: true
+  retry:
+    configs:
+      default:
+        max-attempts: 2                # bounded retries (A04)
+        wait-duration: 200ms
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+
+# ---------------------------------------------------------------------------
+# Logging – verbose enough for CI, no PII (A09)
+# ---------------------------------------------------------------------------
+logging:
+  level:
+    root: INFO
+    health.caresync.gateway: DEBUG
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
+    reactor.netty: WARN
+    io.github.resilience4j: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId:-}] - %msg%n"
+
+# ---------------------------------------------------------------------------
+# Gateway security – test-only settings
+# ---------------------------------------------------------------------------
+caresync:
+  gateway:
+    allowed-origins: "http://localhost:5173,http://localhost:3000"
+    consent:
+      enabled: false
+      enforce-on-prefixes:
+        - "/api/v1/clinical"
+        - "/api/v1/patients"
+        - "/api/v1/appointments"
+        - "/api/v1/billing"
+        - "/api/v1/laboratory"
+        - "/api/v1/notes"
+    security:
+      # Test-only allow-list; production MUST match your identity provider.
+      trusted-issuers:
+        - "https://securetoken.google.com/caresync-test"
+      expected-audience: "caresync-test"
+      # Short-lived test tokens; signature verification still enforced.
+      clock-skew-seconds: 30
+      max-token-length: 4096
+    rate-limit:
+      enabled: true
+      default-requests-per-minute: 600
+      burst-capacity: 120
+  services:
+    patient:
+      uri: "http://localhost:8081"
+    clinical:
+      uri: "http://localhost:8082"
+    billing:
+      uri: "http://localhost:8083"
+    laboratory:
+      uri: "http://localhost:8084"
+    payroll:
+      uri: "http://localhost:8085"
+
+# ---------------------------------------------------------------------------
+# Test datasource – H2 in-memory (never a real DB, A05)
+# ---------------------------------------------------------------------------
+spring.datasource:
+  url: "jdbc:h2:mem:caresync_gateway_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
+  username: "sa"
+  password: ""                          # H2 in-memory; no real secret
+  driver-class-name: "org.h2.Driver"

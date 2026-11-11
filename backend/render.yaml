@@ -87,6 +87,11 @@ services:
           type: web
           name: caresync-laboratory-service
           property: host
+      - key: PAYROLL_SERVICE_URL
+        fromService:
+          type: web
+          name: caresync-payroll-service
+          property: host
 
   - type: web
     name: caresync-patient-service

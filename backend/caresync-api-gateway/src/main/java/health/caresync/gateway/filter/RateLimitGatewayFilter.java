@@ -22,6 +22,7 @@ public class RateLimitGatewayFilter implements GlobalFilter, Ordered {
     }
 
     @Override public Mono<Void> filter(ServerWebExchange ex, GatewayFilterChain chain) {
+        if (!cfg.isEnabled()) return chain.filter(ex);
         var remoteAddress = ex.getRequest().getRemoteAddress();
         String ip = remoteAddress == null || remoteAddress.getAddress() == null
             ? "unknown"
