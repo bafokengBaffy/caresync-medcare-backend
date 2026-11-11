@@ -1,0 +1,104 @@
+# Navigate to project root
+cd "C:\Users\Baffy TechGuru\Desktop\caresync_medcare"
+
+# Inspect changes
+git status
+git diff
+
+# Verify the root Dockerfile used by Render exists in the commit
+git ls-tree --name-only HEAD
+Test-Path .\Dockerfile
+Test-Path .\.dockerignore
+
+# Navigate to backend
+cd backend
+
+# Clean patient service build
+.\mvnw.cmd -pl caresync-patient-service clean
+
+# Run Firebase sync service test
+.\mvnw.cmd -pl caresync-patient-service -Dtest=FirebaseUserSyncServiceTest test
+
+# Return to project root
+cd ..
+
+# Stage only intended backend deployment files
+git add Dockerfile .dockerignore
+git add backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java
+git add backend/caresync-patient-service/src/test/java/health/caresync/patient/FirebaseUserSyncServiceTest.java
+git add backend/render.yaml
+git add backend/README.md
+
+# Review staged changes
+git diff --cached
+git status
+
+# Commit and push
+git commit -m "Fix Render root Dockerfile and configure tenant admin claims"
+git push origin main
+
+# Render monorepo settings when deploying from the root render.yaml Blueprint
+# Root Directory: leave blank
+# Dockerfile Path: ./backend/caresync-api-gateway/Dockerfile
+# Docker Context: ./backend
+# Sync the Blueprint so Render uses the Dockerfile paths declared in render.yaml.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Navigate to frontend
+cd "C:\Users\Baffy TechGuru\Desktop\caresync_medcare\frontend"
+
+# Install dependencies
+npm ci
+
+# Configure production environment
+notepad .env.production
+
+# Build frontend
+npm run build
+
+# Verify production build
+if (Test-Path ".\dist\index.html") {
+    Write-Host "Frontend build successful!" -ForegroundColor Green
+} else {
+    Write-Host "Frontend build failed!" -ForegroundColor Red
+    exit 1
+}
+
+# Return to project root
+cd ..
+
+# Review frontend changes
+git status
+
+# Stage intended frontend changes only
+git add frontend/
+
+# Review staged changes
+git diff --cached
+
+# Commit and push
+git commit -m "Deploy CareSync tenant admin frontend integration"
+git push origin main
+
+# Deploy using Firebase Hosting (if configured for frontend/dist)
+cd frontend
+firebase use caresync-medcare-9e0a5
+firebase deploy --only hosting
