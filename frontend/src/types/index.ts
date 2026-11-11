@@ -8,3 +8,5 @@ export * from './payment';
 export * from './common';
 export * from './tenant';
 export * from './audit';
+export * from './clinical-records';
+export * from './admin-user';

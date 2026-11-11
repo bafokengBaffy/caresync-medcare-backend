@@ -7,7 +7,7 @@ import { readAuthClaims } from '@/lib/auth-claims';
 import { forceRefreshClaims, syncCurrentUser } from '@/api/auth-sync';
 
 export function useAuth() {
-  const { user, setUser, clear } = useAuthStore();
+  const { user, setUser, setPendingApproval, clear, pendingApproval } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,6 +19,11 @@ export function useAuth() {
         let claims = readAuthClaims(token.claims);
         if (!claims) {
           const sync = await syncCurrentUser();
+          if (sync.status === 'PENDING_APPROVAL') {
+            setPendingApproval(true);
+            setUser(null);
+            return;
+          }
           if (sync.synced) {
             const refreshed = await forceRefreshClaims();
             claims = readAuthClaims(refreshed ?? {});
@@ -35,6 +40,7 @@ export function useAuth() {
           displayName: fbUser.displayName,
           ...claims,
         };
+        setPendingApproval(false);
         setUser(next);
       } catch {
         clear();
@@ -44,7 +50,7 @@ export function useAuth() {
       }
     });
     return () => unsub();
-  }, [clear, setUser]);
+  }, [clear, setPendingApproval, setUser]);
 
   const login = async (email: string, password: string) => {
     if (!auth) throw new Error('Firebase not configured');
@@ -52,5 +58,5 @@ export function useAuth() {
   };
   const logout = async () => { if (auth) await signOut(auth); clear(); };
 
-  return { user, loading, login, logout, isAuthenticated: !!user };
+  return { user, loading, login, logout, pendingApproval, isAuthenticated: !!user };
 }

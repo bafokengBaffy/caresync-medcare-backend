@@ -9,7 +9,7 @@ class SupabaseProfileImageStorageTest {
     private final SupabaseProfileImageStorage storage = new SupabaseProfileImageStorage(
         "https://project.supabase.co",
         "server-only-key",
-        "caresync bucket",
+        "caresync-bucket",
         true
     );
 

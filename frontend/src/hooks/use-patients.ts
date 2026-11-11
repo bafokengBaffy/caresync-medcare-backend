@@ -10,11 +10,18 @@ export const patientKeys = {
 };
 
 export function usePatients(filters: PatientFilters = {}) {
-  return useQuery({ queryKey: patientKeys.list(filters), queryFn: () => patientsApi.list(filters) });
+  return useQuery({
+    queryKey: patientKeys.list(filters),
+    queryFn: () => patientsApi.list(filters),
+  });
 }
 
 export function usePatient(id: string) {
-  return useQuery({ queryKey: patientKeys.detail(id), queryFn: () => patientsApi.get(id), enabled: !!id });
+  return useQuery({
+    queryKey: patientKeys.detail(id),
+    queryFn: () => patientsApi.get(id),
+    enabled: !!id,
+  });
 }
 
 export function useCreatePatient() {
@@ -25,10 +32,15 @@ export function useCreatePatient() {
   });
 }
 
-export function useUpdatePatient(id: string) {
+export function useUpdatePatient(id?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (p: PatientUpdatePayload) => patientsApi.update(id, p),
+    mutationFn: (input: PatientUpdatePayload & { id?: string; data?: PatientUpdatePayload }) => {
+      const targetId = input.id ?? id;
+      if (!targetId) throw new Error('Patient id is required');
+      const data = input.data ?? input;
+      return patientsApi.update(targetId, data);
+    },
     onSuccess: () => { toast.success('Patient updated'); qc.invalidateQueries({ queryKey: patientKeys.all }); },
   });
 }

@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { FormField } from './FormField';
 import { useCreatePayment } from '@/hooks/use-payments';
 import { PAYMENT_METHODS } from '@/lib/constants';
+import type { PaymentCreatePayload } from '@/types/payment';
 
 export function PaymentForm({ invoiceId }: { invoiceId?: string }) {
   const nav = useNavigate();
-  const { register, handleSubmit } = useForm<{ invoiceId: string; amountCents: number; method: string }>({
+  const { register, handleSubmit } = useForm<PaymentCreatePayload>({
     defaultValues: { invoiceId: invoiceId ?? '', amountCents: 0, method: 'CARD' },
   });
   const create = useCreatePayment();
-  const onSubmit = async (v: { invoiceId: string; amountCents: number; method: string }) => {
-    await create.mutateAsync({ invoiceId: v.invoiceId, amountCents: Number(v.amountCents), method: v.method as never });
+  const onSubmit = async (v: PaymentCreatePayload) => {
+    await create.mutateAsync({ ...v, amountCents: Number(v.amountCents) });
     nav(invoiceId ? `/invoices/${invoiceId}` : '/payments');
   };
   return (

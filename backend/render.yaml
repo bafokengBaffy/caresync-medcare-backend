@@ -14,7 +14,9 @@ envVarGroups:
       - key: FIREBASE_CLIENT_ID
         sync: false
       - key: FIREBASE_BOOTSTRAP_ADMIN_EMAIL
-        value: baffkay20@gmail.com,maribemaribe43@gmail.com,kokikoki@gmail.com
+        value: baffkay20@gmail.com,maribemaribe43@gmail.com
+      - key: FIREBASE_TENANT_ADMIN_EMAIL
+        value: kokikoki5713@gmail.com
       - key: FIREBASE_BOOTSTRAP_ADMIN_TENANT_SUBDOMAIN
         value: caresync
 

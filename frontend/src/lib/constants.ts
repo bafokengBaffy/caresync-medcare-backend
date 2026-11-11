@@ -10,9 +10,23 @@ export type AppointmentStatus = typeof APPOINTMENT_STATUSES[number];
 export const INVOICE_STATUSES = ['DRAFT', 'ISSUED', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'VOID'] as const;
 export type InvoiceStatus = typeof INVOICE_STATUSES[number];
 
-export const PAYMENT_METHODS = ['CARD', 'BANK_TRANSFER', 'CASH', 'INSURANCE', 'OTHER'] as const;
+export const PAYMENT_METHODS = ['CARD', 'BANK_TRANSFER', 'CASH', 'MOBILE_MONEY', 'OTHER'] as const;
 
-export const ROLES = ['ADMIN', 'PROVIDER', 'STAFF'] as const;
+export const ROLES = [
+  'SUPER_ADMIN',
+  'TENANT_ADMIN',
+  'PATIENT',
+  'ADMIN',
+  'PROVIDER',
+  'STAFF',
+  'RECEPTION',
+  'FINANCE',
+  'MANAGER',
+  'CONSENT_MANAGER',
+  'CLINICIAN',
+  'PRIVACY_OFFICER',
+  'RECEPTIONIST',
+] as const;
 export type Role = typeof ROLES[number];
 
 export const STORAGE_KEYS = { auth: 'caresync.auth', tenantId: 'caresync.tenant_id' } as const;

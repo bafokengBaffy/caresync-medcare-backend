@@ -4,6 +4,9 @@ export interface Appointment {
   id: string;
   patientId: string;
   providerId: string;
+  // ADDED: Joined relational data for UI display
+  patientName?: string; 
+  providerName?: string;
   scheduledStart: string;
   scheduledEnd: string;
   status: AppointmentStatus;
@@ -23,5 +26,14 @@ export interface AppointmentCreatePayload {
   reason?: string;
 }
 
-export interface AvailabilitySlot { start: string; end: string; available: boolean; }
-export interface AvailabilityQuery { providerId: string; from: string; to: string; }
+export interface AvailabilitySlot { 
+  start: string; 
+  end: string; 
+  available: boolean; 
+}
+
+export interface AvailabilityQuery { 
+  providerId: string; 
+  from: string; 
+  to: string; 
+}

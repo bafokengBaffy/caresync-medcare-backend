@@ -16,9 +16,9 @@ Profile images are uploaded through the authenticated `PATCH /api/v1/profile/ima
 
 ## Firebase user sync and initial admin
 
-The patient service mirrors Firebase Authentication users into `firebase_users` and polls Firebase once per minute. Configure `FIREBASE_BOOTSTRAP_ADMIN_EMAIL` in Render to allowlist the initial administrator; only a Firebase user with that exact, verified email is promoted. The service assigns the `ADMIN` custom claim and the `caresync` tenant claim server-side, preserving other claims. Firebase passwords are never read by CareSync or used to assign roles.
+The patient service mirrors Firebase Authentication users into `firebase_users` and polls Firebase once per minute. Configure `FIREBASE_BOOTSTRAP_ADMIN_EMAIL` in Render to allowlist initial tenant-scoped `ADMIN` users, and `FIREBASE_TENANT_ADMIN_EMAIL` for tenant administrators. Only accounts with an exact, verified email are promoted. Tenant admins receive the `TENANT_ADMIN` custom claim and the `caresync` tenant claim server-side, preserving other claims. Firebase passwords are never read by CareSync or used to assign roles.
 
-Flyway migration `V12__seed_caresync_tenant.sql` creates the default tenant if it does not exist. After the patient service starts successfully with Supabase Postgres configured, wait for the first sync and sign out and back in so Firebase issues a token with the new claims. Remove `FIREBASE_BOOTSTRAP_ADMIN_EMAIL` from Render after confirming the role; the Firebase custom claim remains in place. Do not assign roles or tenant IDs from browser-provided data.
+Flyway migration `V12__seed_caresync_tenant.sql` creates the default tenant if it does not exist. After the patient service starts successfully with Supabase Postgres configured, wait for the first sync and sign out and back in so Firebase issues a token with the new claims. Remove the applicable allowlist variable from Render after confirming the role; the Firebase custom claim remains in place. Do not assign roles or tenant IDs from browser-provided data.
 
 Firebase Authentication sign-in errors occur before the backend. The Firebase web app must use the same project as the Admin SDK, and Email/Password sign-in must be enabled in Firebase Authentication. The frontend build is configured for project `caresync-medcare-9e0a5`.
 

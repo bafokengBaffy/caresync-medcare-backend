@@ -6,3 +6,6 @@ export { invoicesApi } from './invoices';
 export { paymentsApi } from './payments';
 export { auditApi } from './audit';
 export { tenantsApi } from './tenants';
+export { profileApi } from './profile';
+export { dentalChartsApi, eyeExamsApi, labResultsApi } from './clinical-records';
+export { adminUsersApi } from './admin-users';

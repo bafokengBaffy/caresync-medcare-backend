@@ -17,6 +17,7 @@ import {
   signOut,
   signInWithEmailAndPassword,
   signInWithPopup,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { auth, parseFirebaseAuthError } from '@/lib/firebase';
@@ -27,6 +28,13 @@ class AuthClaimsNotReadyError extends Error {
   constructor() {
     super('Your account is signed in but is not yet assigned to a CareSync tenant and role. Verify your email, wait for administrator provisioning, then sign in again.');
     this.name = 'AuthClaimsNotReadyError';
+  }
+}
+
+class AuthPendingApprovalError extends Error {
+  constructor() {
+    super('Your account is awaiting administrator approval.');
+    this.name = 'AuthPendingApprovalError';
   }
 }
 
@@ -53,6 +61,7 @@ async function resolveProvisionedClaims(): Promise<Record<string, unknown> | nul
   if (readAuthClaims(claims ?? {})) return claims;
 
   const sync = await syncCurrentUser();
+  if (sync.status === 'PENDING_APPROVAL') throw new AuthPendingApprovalError();
   if (!sync.synced) return null;
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -84,6 +93,16 @@ export default function LoginPage() {
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      await credential.user.reload();
+      if (!credential.user.emailVerified) {
+        try {
+          await sendEmailVerification(credential.user);
+        } catch (verificationError) {
+          console.warn('[CareSync Auth] Verification email could not be sent automatically', verificationError);
+        }
+        navigate('/auth/verify-email', { replace: true });
+        return;
+      }
       const token = await credential.user.getIdTokenResult(true);
       const claims = readAuthClaims(token.claims)
         ? token.claims
@@ -94,6 +113,10 @@ export default function LoginPage() {
       }
       handleSuccess();
     } catch (loginError) {
+      if (loginError instanceof AuthPendingApprovalError) {
+        navigate('/auth/pending-approval', { replace: true });
+        return;
+      }
       const parsed = loginError instanceof AuthClaimsNotReadyError ? null : parseFirebaseAuthError(loginError);
       if (parsed && import.meta.env.DEV) {
         console.error('[CareSync Auth] Sign-in failed', {
@@ -126,7 +149,9 @@ export default function LoginPage() {
       }
       handleSuccess();
     } catch (loginError) {
-      if (loginError instanceof FirebaseError && loginError.code === 'auth/popup-closed-by-user') {
+      if (loginError instanceof AuthPendingApprovalError) {
+        navigate('/auth/pending-approval', { replace: true });
+      } else if (loginError instanceof FirebaseError && loginError.code === 'auth/popup-closed-by-user') {
         setError('The Google sign-in window was closed before completion.');
       } else {
         setError(getLoginError(loginError));

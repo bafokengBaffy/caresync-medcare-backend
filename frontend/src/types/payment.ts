@@ -3,15 +3,15 @@ export interface Payment {
   invoiceId: string;
   amountCents: number;
   currency: string;
-  method: 'CARD' | 'BANK_TRANSFER' | 'CASH' | 'INSURANCE' | 'OTHER';
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  method: 'CARD' | 'BANK_TRANSFER' | 'CASH' | 'MOBILE_MONEY' | 'OTHER';
+  status: 'RECORDED' | 'REFUNDED';
   externalRef?: string;
   paidAt?: string;
-  createdAt: string;
 }
 
 export interface PaymentCreatePayload {
   invoiceId: string;
   amountCents: number;
   method: Payment['method'];
+  externalReference?: string;
 }

@@ -129,4 +129,45 @@ class FirebaseUserSyncServiceTest {
         verify(firebaseAuth, never()).setCustomUserClaims(eq("firebase-user-2"), any());
         verify(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
     }
+
+    @Test
+    void promotesConfiguredVerifiedTenantAdminWithTenantScopedRole() throws Exception {
+        UUID tenantId = UUID.randomUUID();
+        FirebaseAuth firebaseAuth = mock(FirebaseAuth.class);
+        TenantRepository tenants = mock(TenantRepository.class);
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        Tenant tenant = mock(Tenant.class);
+        ExportedUserRecord user = mock(ExportedUserRecord.class);
+        ListUsersPage page = mock(ListUsersPage.class);
+        when(tenants.findAll()).thenReturn(List.of(tenant));
+        when(tenant.getId()).thenReturn(tenantId);
+        when(tenants.findBySubdomain("caresync")).thenReturn(Optional.of(tenant));
+        when(user.getUid()).thenReturn("firebase-koki-5713");
+        when(user.getEmail()).thenReturn("KOKIKOKI5713@gmail.com");
+        when(user.isEmailVerified()).thenReturn(true);
+        when(user.isDisabled()).thenReturn(false);
+        when(user.getCustomClaims()).thenReturn(Map.of());
+        when(page.getValues()).thenReturn(List.of(user));
+        when(page.getNextPage()).thenReturn(null);
+        when(firebaseAuth.listUsers(null)).thenReturn(page);
+
+        FirebaseUserSyncService service = new FirebaseUserSyncService(
+            firebaseAuth,
+            tenants,
+            jdbcTemplate,
+            "",
+            "caresync",
+            "",
+            "kokikoki5713@gmail.com",
+            null
+        );
+
+        service.syncAllUsers();
+
+        verify(firebaseAuth).setCustomUserClaims("firebase-koki-5713", Map.of(
+            "role", "TENANT_ADMIN",
+            "tenant_id", tenantId.toString()
+        ));
+        verify(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+    }
 }

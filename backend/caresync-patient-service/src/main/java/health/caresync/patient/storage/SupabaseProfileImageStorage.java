@@ -36,7 +36,7 @@ public class SupabaseProfileImageStorage {
     public SupabaseProfileImageStorage(
         @Value("${caresync.storage.url:}") String baseUrl,
         @Value("${caresync.storage.service-role-key:}") String serviceRoleKey,
-        @Value("${caresync.storage.profile-image-bucket:caresync bucket}") String bucket,
+        @Value("${caresync.storage.profile-image-bucket:caresync-bucket}") String bucket,
         @Value("${caresync.storage.enabled:false}") boolean enabled
     ) {
         this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");

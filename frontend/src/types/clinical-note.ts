@@ -24,28 +24,32 @@ export interface Attachment {
 
 export interface ClinicalNote {
   id: string;
-  tenantId: string;
+  title?: string;
   patientId: string;
   providerId: string;
-  appointmentId: string;
-  specialty: Specialty;
-  noteType: NoteType;
+  appointmentId?: string;
+  specialty?: Specialty;
+  noteType?: NoteType;
   status: 'DRAFT' | 'SIGNED' | 'AMENDED' | 'LOCKED';
   soapData: SoapData;
-  vitals?: Vitals;
-  attachments?: Attachment[];
-  tags?: string[];
-  version: number;
   createdAt: string;
   updatedAt?: string;
-  signedAt?: string;
 }
 
+export type ClinicalNoteSummary = Omit<ClinicalNote, 'soapData'>;
+
 export interface ClinicalNoteCreatePayload {
+  title?: string;
   patientId: string;
   providerId: string;
-  appointmentId: string;
-  specialty: Specialty;
-  noteType: NoteType;
+  appointmentId?: string;
+  specialty?: Specialty;
+  noteType?: NoteType;
   soapData: SoapData;
+}
+
+export interface ClinicalNoteUpdatePayload {
+  title?: string;
+  soapData?: SoapData;
+  addendum?: string;
 }
