@@ -22,22 +22,18 @@ cd backend
 # Return to project root
 cd ..
 
-# Stage only intended backend deployment files
-git add Dockerfile .dockerignore
-git add backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java
-git add backend/caresync-patient-service/src/test/java/health/caresync/patient/FirebaseUserSyncServiceTest.java
-git add backend/render.yaml
-git add backend/README.md
+# Stage the backend tenant-admin claim, Render Blueprint, and deployment instructions
+git add backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java render.yaml DEPLOY_FRONTEND_BACKEND.txt
 
 # Review staged changes
 git diff --cached
 git status
 
 # Commit and push
-git commit -m "Fix Render root Dockerfile and configure tenant admin claims"
+git commit -m "Configure tenant admin provisioning"
 git push origin main
 
-# Render monorepo settings when deploying from the root render.yaml Blueprint
+# Render settings when deploying from the root render.yaml Blueprint
 # Root Directory: leave blank
 # Dockerfile Path: ./backend/caresync-api-gateway/Dockerfile
 # Docker Context: ./backend
@@ -65,8 +61,8 @@ git push origin main
 # Navigate to frontend
 cd "C:\Users\Baffy TechGuru\Desktop\caresync_medcare\frontend"
 
-# Install dependencies
-npm ci
+# Install dependencies without removing node_modules
+npm install --prefer-offline --no-audit --no-fund
 
 # Configure production environment
 notepad .env.production
@@ -88,14 +84,14 @@ cd ..
 # Review frontend changes
 git status
 
-# Stage intended frontend changes only
-git add frontend/
+# Stage reviewed frontend changes only
+git add frontend/src/pages/admin/users/RoleManagementPage.tsx frontend/src/pages/admin/system/IntegrationsPage.tsx frontend/src/pages/admin/super-admin/billing/RevenuePage.tsx frontend/src/lib/query-client.ts
 
 # Review staged changes
 git diff --cached
 
 # Commit and push
-git commit -m "Deploy CareSync tenant admin frontend integration"
+git commit -m "Align admin screens with live backend capabilities"
 git push origin main
 
 # Deploy using Firebase Hosting (if configured for frontend/dist)

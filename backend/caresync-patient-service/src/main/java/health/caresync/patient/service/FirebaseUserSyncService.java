@@ -113,7 +113,7 @@ public class FirebaseUserSyncService {
             tenantId = null;
             role = "SUPER_ADMIN";
         } else if (isTenantAdmin(user) || isBootstrapAdmin(user)) {
-            tenantId = bootstrapAdminTenantId(tenantId,
+            tenantId = bootstrapAdminTenantId(isTenantAdmin(user) ? null : tenantId,
                 tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()), user);
             if (tenantId == null) {
                 throw new IllegalStateException("CareSync tenant is not available for admin provisioning");
@@ -176,7 +176,7 @@ public class FirebaseUserSyncService {
                     role = "SUPER_ADMIN";
                     tenantId = null;
                 } else if (isTenantAdmin(user) || isBootstrapAdmin(user)) {
-                    UUID adminTenantId = bootstrapAdminTenantId(tenantId, existingTenants, user);
+                    UUID adminTenantId = bootstrapAdminTenantId(isTenantAdmin(user) ? null : tenantId, existingTenants, user);
                     if (adminTenantId != null) {
                         String provisionedRole = isTenantAdmin(user) ? "TENANT_ADMIN" : "ADMIN";
                         boolean claimsChanged = !provisionedRole.equals(role)
