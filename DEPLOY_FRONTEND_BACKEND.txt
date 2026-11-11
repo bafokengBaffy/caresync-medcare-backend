@@ -85,7 +85,7 @@ cd ..
 git status
 
 # Stage reviewed frontend changes only
-git add frontend/src/pages/admin/users/RoleManagementPage.tsx frontend/src/pages/admin/system/IntegrationsPage.tsx frontend/src/pages/admin/super-admin/billing/RevenuePage.tsx frontend/src/lib/query-client.ts
+git add frontend/src/pages/admin/users/RoleManagementPage.tsx frontend/src/pages/admin/system/IntegrationsPage.tsx frontend/src/pages/admin/super-admin/billing/RevenuePage.tsx frontend/src/lib/query-client.ts frontend/src/pages/admin/roles/RoleAccessGuide.tsx frontend/src/pages/admin/super-admin/audit/SystemActivityPage.tsx
 
 # Review staged changes
 git diff --cached

@@ -1,10 +1,5 @@
-const SystemActivityPage = () => {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900"><SystemActivityPage /></h1>
-      <p className="mt-2 text-sm text-gray-500">TODO: implement</p>
-    </div>
-  );
-};
+import { Navigate } from 'react-router-dom';
 
-export default SystemActivityPage;
+export default function SystemActivityPage() {
+  return <Navigate to="/admin/super/audit" replace />;
+}
