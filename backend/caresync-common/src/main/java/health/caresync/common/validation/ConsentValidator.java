@@ -1,9 +1,7 @@
 package health.caresync.common.validation;
 
 import health.caresync.common.exception.ValidationException;
-import org.springframework.stereotype.Component;
 
-@Component
 public class ConsentValidator {
 
     public void validateTypes(String[] types) {

@@ -1,4 +1,4 @@
-﻿health.caresync.common.config.CommonAutoConfiguration
+health.caresync.common.config.CommonAutoConfiguration
 health.caresync.common.config.JacksonConfig
 health.caresync.common.config.CorsConfig
 health.caresync.common.config.OpenApiConfig
