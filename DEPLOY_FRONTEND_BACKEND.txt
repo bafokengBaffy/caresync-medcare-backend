@@ -1,76 +1,44 @@
-# Navigate to project root
+﻿# Navigate to project root
 cd "C:\Users\Baffy TechGuru\Desktop\caresync_medcare"
 
-# Inspect changes
+# Review the worktree and whitespace
 git status
+git diff --check
 git diff
 
-# Verify the root Dockerfile used by Render exists in the commit
-git ls-tree --name-only HEAD
-Test-Path .\Dockerfile
-Test-Path .\.dockerignore
-
-# Navigate to backend
+# Run the admin backend regression suite
 cd backend
-
-# Clean patient service build
-.\mvnw.cmd -pl caresync-patient-service clean
-
-# Run admin configuration, tenant isolation, and Firebase claim regression tests
-.\mvnw.cmd -pl caresync-patient-service -am -Dtest=AdminConfigurationServiceTest,FirebaseUserSyncServiceTest,AdminTenantServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+.\mvnw.cmd -pl caresync-patient-service -am '-Dtest=AdminConfigurationServiceTest,FirebaseUserSyncServiceTest,AdminTenantServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
 
 # Return to project root
 cd ..
 
-# Stage the reviewed backend authorization, settings, migration, tests, and Render files
-git add backend/caresync-common/src/main/java/health/caresync/common/security/FirebaseJwtFilter.java backend/caresync-common/src/main/java/health/caresync/common/security/MfaEnforcementFilter.java backend/caresync-common/src/main/java/health/caresync/common/security/SecurityConfig.java backend/caresync-patient-service/src/main/java/health/caresync/patient/controller/AdminConfigurationController.java backend/caresync-patient-service/src/main/java/health/caresync/patient/controller/TenantAdminSettingsController.java backend/caresync-patient-service/src/main/java/health/caresync/patient/domain/entity/AdminConfiguration.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/AdminConfigurationService.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/AdminRoleService.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java backend/caresync-patient-service/src/main/resources/db/migration/V32__admin_configuration_revisions.sql backend/caresync-patient-service/src/test/java/health/caresync/patient/AdminConfigurationServiceTest.java backend/caresync-patient-service/src/test/java/health/caresync/patient/FirebaseUserSyncServiceTest.java render.yaml DEPLOY_FRONTEND_BACKEND.txt
+# Stage only the reviewed admin implementation and Firebase Hosting configuration
+git add DEPLOY_FRONTEND_BACKEND.txt .firebaserc firebase.json backend/caresync-common/src/main/java/health/caresync/common/security/FirebaseJwtFilter.java backend/caresync/common/src/main/java/health/caresync/common/security/MfaEnforcementFilter.java backend/caresync-common/src/main/java/health/caresync/common/security/SecurityConfig.java backend/caresync-patient-service/src/main/java/health/caresync/patient/controller/AdminConfigurationController.java backend/caresync-patient-service/src/main/java/health/caresync/patient/controller/TenantAdminSettingsController.java backend/caresync-patient-service/src/main/java/health/caresync/patient/domain/entity/AdminConfiguration.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/AdminConfigurationService.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/AdminRoleService.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java backend/caresync-patient-service/src/main/resources/db/migration/V32__admin_configuration_revisions.sql backend/caresync-patient-service/src/test/java/health/caresync/patient/AdminConfigurationServiceTest.java backend/caresync-patient-service/src/test/java/health/caresync/patient/FirebaseUserSyncServiceTest.java frontend/src/pages/admin/dashboard/AdminDashboardPage.tsx frontend/src/pages/admin/super-admin/registration/RegistrationSettingsPage.tsx frontend/src/pages/admin/super-admin/system/GlobalSettingsPage.tsx frontend/src/pages/admin/tenant-admin/settings/TenantSettingsPage.tsx frontend/src/router.tsx
 
-# Review staged changes
-git diff --cached
+# Review staged files before committing
+git diff --cached --check
+git diff --cached --stat
 git status
 
-# Commit and push
-git commit -m "Enforce versioned admin settings and MFA policy"
+# Commit and push to trigger the Render Blueprint deploy
+git commit -m "Harden admin settings and MFA enforcement"
 git push origin main
 
-# Render settings when deploying from the root render.yaml Blueprint
-# Root Directory: leave blank
+# Confirm Render uses the root Blueprint Docker context
+# Root Directory: blank
 # Dockerfile Path: ./backend/caresync-api-gateway/Dockerfile
 # Docker Context: ./backend
-# Sync the Blueprint so Render uses the Dockerfile paths declared in render.yaml.
 
+# Configure the frontend production API endpoint
+cd frontend
+$env:VITE_API_BASE_URL = "https://caresync-medcare-backend.onrender.com"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Navigate to frontend
-cd "C:\Users\Baffy TechGuru\Desktop\caresync_medcare\frontend"
-
-# Install dependencies without removing node_modules
+# Install dependencies without deleting node_modules
 npm install --prefer-offline --no-audit --no-fund
 
-# Configure production environment
-notepad .env.production
-
-# Build frontend
+# Build and verify the frontend
 npm run build
-
-# Verify production build
 if (Test-Path ".\dist\index.html") {
     Write-Host "Frontend build successful!" -ForegroundColor Green
 } else {
@@ -78,23 +46,12 @@ if (Test-Path ".\dist\index.html") {
     exit 1
 }
 
-# Return to project root
+# Return to project root and deploy Firebase Hosting
 cd ..
-
-# Review frontend changes
-git status
-
-# Stage reviewed frontend changes only
-git add frontend/src/pages/admin/users/RoleManagementPage.tsx frontend/src/pages/admin/system/IntegrationsPage.tsx frontend/src/pages/admin/super-admin/billing/RevenuePage.tsx frontend/src/lib/query-client.ts frontend/src/pages/admin/roles/RoleAccessGuide.tsx frontend/src/pages/admin/super-admin/audit/SystemActivityPage.tsx frontend/src/pages/admin/dashboard/AdminDashboardPage.tsx frontend/src/router.tsx frontend/src/pages/admin/super-admin/system/GlobalSettingsPage.tsx frontend/src/pages/admin/tenant-admin/settings/TenantSettingsPage.tsx frontend/src/pages/admin/super-admin/registration/RegistrationSettingsPage.tsx
-
-# Review staged changes
-git diff --cached
-
-# Commit and push
-git commit -m "Align admin screens with live backend capabilities"
-git push origin main
-
-# Deploy using Firebase Hosting (if configured for frontend/dist)
-cd frontend
+$env:CI = "1"
 firebase use caresync-medcare-9e0a5
-firebase deploy --only hosting
+firebase deploy --only hosting --project caresync-medcare-9e0a5 --non-interactive
+
+# Verify the live frontend and Render health endpoint
+Invoke-WebRequest -Uri "https://caresync-medcare-9e0a5.web.app" -Method Head
+Invoke-WebRequest -Uri "https://caresync-medcare-backend.onrender.com/actuator/health"
