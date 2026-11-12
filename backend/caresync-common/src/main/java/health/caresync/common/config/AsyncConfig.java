@@ -10,8 +10,8 @@ import java.util.concurrent.Executor;
 @Configuration
 public class AsyncConfig {
 
-    @Bean(name = "taskExecutor")
-    public Executor taskExecutor() {
+    @Bean(name = "caresyncTaskExecutor")
+    public Executor caresyncTaskExecutor() {
         ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
         ex.setCorePoolSize(4);
         ex.setMaxPoolSize(16);
