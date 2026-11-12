@@ -113,8 +113,8 @@ public class FirebaseUserSyncService {
             tenantId = null;
             role = "SUPER_ADMIN";
         } else if (isTenantAdmin(user) || isBootstrapAdmin(user)) {
-            tenantId = bootstrapAdminTenantId(isTenantAdmin(user) ? null : tenantId,
-                tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()), user);
+            tenantId = adminTenantId(user, tenantId,
+                tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()));
             if (tenantId == null) {
                 throw new IllegalStateException("CareSync tenant is not available for admin provisioning");
             }
@@ -176,7 +176,7 @@ public class FirebaseUserSyncService {
                     role = "SUPER_ADMIN";
                     tenantId = null;
                 } else if (isTenantAdmin(user) || isBootstrapAdmin(user)) {
-                    UUID adminTenantId = bootstrapAdminTenantId(isTenantAdmin(user) ? null : tenantId, existingTenants, user);
+                    UUID adminTenantId = adminTenantId(user, tenantId, existingTenants);
                     if (adminTenantId != null) {
                         String provisionedRole = isTenantAdmin(user) ? "TENANT_ADMIN" : "ADMIN";
                         boolean claimsChanged = !provisionedRole.equals(role)
@@ -285,6 +285,12 @@ public class FirebaseUserSyncService {
             LOGGER.info("Created CareSync tenant '{}' during bootstrap provisioning", bootstrapAdminTenantSubdomain);
         }
         return configuredTenant.map(Tenant::getId).orElse(null);
+    }
+
+    private UUID adminTenantId(UserRecord user, UUID claimedTenantId, Set<UUID> existingTenants) {
+        // The allow-listed tenant admin always belongs to the configured CareSync tenant.
+        // A stale or forged tenant claim must not move this account to another tenant.
+        return bootstrapAdminTenantId(isTenantAdmin(user) ? null : claimedTenantId, existingTenants, user);
     }
 
     private static String stringClaim(Object claim) {

@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -34,6 +35,10 @@ public class AdminConfiguration {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Version
+    @Column(nullable = false)
+    private long revision = 1;
+
     public UUID getId() { return id; }
     public String getScope() { return scope; }
     public void setScope(String scope) { this.scope = scope; }
@@ -47,4 +52,6 @@ public class AdminConfiguration {
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public long getRevision() { return revision; }
+    public void setRevision(long revision) { this.revision = revision; }
 }

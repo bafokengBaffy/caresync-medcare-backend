@@ -1,92 +1,122 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { RoleGate } from './components/auth/RoleGate';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { PublicLayout } from './components/layout/PublicLayout';
+import { ROLES, type Role } from './lib/constants';
+import { useAuthStore } from './stores/auth-store';
 import LandingPage from './pages/LandingPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import PatientsListPage from './pages/patients/PatientsListPage';
-import PatientCreatePage from './pages/patients/PatientCreatePage';
-import PatientDetailPage from './pages/patients/PatientDetailPage';
-import PatientEditPage from './pages/patients/PatientEditPage';
-import PatientDocumentsPage from './pages/patients/PatientDocumentsPage';
-import ProvidersListPage from './pages/providers/ProvidersListPage';
-import ProviderDetailPage from './pages/providers/ProviderDetailPage';
-import ProviderCreatePage from './pages/providers/ProviderCreatePage';
-import ProviderEditPage from './pages/providers/ProviderEditPage';
-import AppointmentsListPage from './pages/appointments/AppointmentsListPage';
-import AppointmentCreatePage from './pages/appointments/AppointmentCreatePage';
-import AppointmentDetailPage from './pages/appointments/AppointmentDetailPage';
-import CalendarPage from './pages/appointments/CalendarPage';
-import AvailabilityPage from './pages/appointments/AvailabilityPage';
-import NotesListPage from './pages/clinical-notes/NotesListPage';
-import NoteCreatePage from './pages/clinical-notes/NoteCreatePage';
-import NoteDetailPage from './pages/clinical-notes/NoteDetailPage';
-import InvoicesListPage from './pages/billing/InvoicesListPage';
-import InvoiceCreatePage from './pages/billing/InvoiceCreatePage';
-import InvoiceDetailPage from './pages/billing/InvoiceDetailPage';
-import InvoiceEditPage from './pages/billing/InvoiceEditPage';
-import PaymentsPage from './pages/billing/PaymentsPage';
-import SettingsPage from './pages/settings/SettingsPage';
-import ProfilePage from './pages/settings/ProfilePage';
-import AuditLogPage from './pages/admin/audit/AuditLogPage';
-import TenantAdminPage from './pages/admin/TenantAdminPage';
+import ErrorPage from './pages/ErrorPage';
+import NotFoundPage from './pages/NotFoundPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import PendingApprovalPage from './pages/auth/PendingApprovalPage';
-import NotFoundPage from './pages/NotFoundPage';
-import ErrorPage from './pages/ErrorPage';
 import PatientDashboardPage from './pages/patient-portal/PatientDashboardPage';
 import MyAppointmentsPage from './pages/patient-portal/MyAppointmentsPage';
 import MyRecordsPage from './pages/patient-portal/MyRecordsPage';
 import MyBillingPage from './pages/patient-portal/MyBillingPage';
-import SuperAdminDashboardPage from './pages/admin/super-admin/dashboard/SuperAdminDashboardPage';
-import SuperAdminUserListPage from './pages/admin/super-admin/users/UserListPage';
-import SuperAdminUserDetailPage from './pages/admin/super-admin/users/UserDetailPage';
-import SuperAdminUserCreatePage from './pages/admin/super-admin/users/UserCreatePage';
-import SuperAdminTenantListPage from './pages/admin/super-admin/tenants/TenantListPage';
-import SuperAdminTenantDetailPage from './pages/admin/super-admin/tenants/TenantDetailPage';
-import SuperAdminTenantCreatePage from './pages/admin/super-admin/tenants/TenantCreatePage';
-import TenantAdminsPage from './pages/admin/super-admin/tenants/TenantAdminsPage';
 import DentalChartsPage from './pages/clinical/DentalChartsPage';
 import EyeExamsPage from './pages/clinical/EyeExamsPage';
 import LabResultsPage from './pages/clinical/LabResultsPage';
-import RegistrationRequestsPage from './pages/admin/super-admin/registration/RegistrationRequestsPage';
-import PendingActivationsPage from './pages/admin/super-admin/registration/PendingActivationsPage';
-import ProvisionStaffPage from './pages/admin/super-admin/registration/ProvisionStaffPage';
-import RegistrationSettingsPage from './pages/admin/super-admin/registration/RegistrationSettingsPage';
-import SuperAdminRoleManagementPage from './pages/admin/super-admin/roles/RoleManagementPage';
-import SuperAdminAuditLogPage from './pages/admin/super-admin/audit/AuditLogPage';
-import SystemActivityPage from './pages/admin/super-admin/audit/SystemActivityPage';
-import GlobalSettingsPage from './pages/admin/super-admin/system/GlobalSettingsPage';
-import IntegrationsPage from './pages/admin/super-admin/system/IntegrationsPage';
-import RevenuePage from './pages/admin/super-admin/billing/RevenuePage';
-import SubscriptionsPage from './pages/admin/super-admin/billing/SubscriptionsPage';
-import TenantAdminDashboardPage from './pages/admin/tenant-admin/dashboard/TenantAdminDashboardPage';
-import StaffListPage from './pages/admin/tenant-admin/staff/StaffListPage';
-import StaffCreatePage from './pages/admin/tenant-admin/staff/StaffCreatePage';
-import StaffDetailPage from './pages/admin/tenant-admin/staff/StaffDetailPage';
-import StaffInvitePage from './pages/admin/tenant-admin/staff/StaffInvitePage';
-import TenantUserListPage from './pages/admin/tenant-admin/users/TenantUserListPage';
-import TenantUserCreatePage from './pages/admin/tenant-admin/users/TenantUserCreatePage';
-import TenantUserDetailPage from './pages/admin/tenant-admin/users/TenantUserDetailPage';
-import PatientRegistrationsPage from './pages/admin/tenant-admin/registration/PatientRegistrationsPage';
-import PendingApprovalsPage from './pages/admin/tenant-admin/registration/PendingApprovalsPage';
-import StaffProvisioningPage from './pages/admin/tenant-admin/registration/StaffProvisioningPage';
-import TenantRoleManagementPage from './pages/admin/tenant-admin/roles/TenantRoleManagementPage';
-import TenantSettingsPage from './pages/admin/tenant-admin/settings/TenantSettingsPage';
-import TenantAuditLogPage from './pages/admin/tenant-admin/audit/TenantAuditLogPage';
+const AdminDashboardPage = lazy(() => import('./pages/admin/dashboard/AdminDashboardPage'));
+const AuditLogPage = lazy(() => import('./pages/admin/audit/AuditLogPage'));
+const SuperAdminDashboardPage = lazy(() => import('./pages/admin/super-admin/dashboard/SuperAdminDashboardPage'));
+const SuperAdminUserListPage = lazy(() => import('./pages/admin/super-admin/users/UserListPage'));
+const SuperAdminUserDetailPage = lazy(() => import('./pages/admin/super-admin/users/UserDetailPage'));
+const SuperAdminUserCreatePage = lazy(() => import('./pages/admin/super-admin/users/UserCreatePage'));
+const SuperAdminTenantListPage = lazy(() => import('./pages/admin/super-admin/tenants/TenantListPage'));
+const SuperAdminTenantDetailPage = lazy(() => import('./pages/admin/super-admin/tenants/TenantDetailPage'));
+const SuperAdminTenantCreatePage = lazy(() => import('./pages/admin/super-admin/tenants/TenantCreatePage'));
+const TenantAdminsPage = lazy(() => import('./pages/admin/super-admin/tenants/TenantAdminsPage'));
+const RegistrationRequestsPage = lazy(() => import('./pages/admin/super-admin/registration/RegistrationRequestsPage'));
+const PendingActivationsPage = lazy(() => import('./pages/admin/super-admin/registration/PendingActivationsPage'));
+const ProvisionStaffPage = lazy(() => import('./pages/admin/super-admin/registration/ProvisionStaffPage'));
+const RegistrationSettingsPage = lazy(() => import('./pages/admin/super-admin/registration/RegistrationSettingsPage'));
+const SuperAdminRoleManagementPage = lazy(() => import('./pages/admin/super-admin/roles/RoleManagementPage'));
+const SuperAdminAuditLogPage = lazy(() => import('./pages/admin/super-admin/audit/AuditLogPage'));
+const SystemActivityPage = lazy(() => import('./pages/admin/super-admin/audit/SystemActivityPage'));
+const GlobalSettingsPage = lazy(() => import('./pages/admin/super-admin/system/GlobalSettingsPage'));
+const IntegrationsPage = lazy(() => import('./pages/admin/system/IntegrationsPage'));
+const RevenuePage = lazy(() => import('./pages/admin/super-admin/billing/RevenuePage'));
+const SubscriptionsPage = lazy(() => import('./pages/admin/super-admin/billing/SubscriptionsPage'));
+const TenantAdminDashboardPage = lazy(() => import('./pages/admin/tenant-admin/dashboard/TenantAdminDashboardPage'));
+const StaffListPage = lazy(() => import('./pages/admin/tenant-admin/staff/StaffListPage'));
+const StaffCreatePage = lazy(() => import('./pages/admin/tenant-admin/staff/StaffCreatePage'));
+const StaffDetailPage = lazy(() => import('./pages/admin/tenant-admin/staff/StaffDetailPage'));
+const StaffInvitePage = lazy(() => import('./pages/admin/tenant-admin/staff/StaffInvitePage'));
+const TenantUserListPage = lazy(() => import('./pages/admin/tenant-admin/users/TenantUserListPage'));
+const TenantUserCreatePage = lazy(() => import('./pages/admin/tenant-admin/users/TenantUserCreatePage'));
+const TenantUserDetailPage = lazy(() => import('./pages/admin/tenant-admin/users/TenantUserDetailPage'));
+const PatientRegistrationsPage = lazy(() => import('./pages/admin/tenant-admin/registration/PatientRegistrationsPage'));
+const PendingApprovalsPage = lazy(() => import('./pages/admin/tenant-admin/registration/PendingApprovalsPage'));
+const StaffProvisioningPage = lazy(() => import('./pages/admin/tenant-admin/registration/StaffProvisioningPage'));
+const TenantRoleManagementPage = lazy(() => import('./pages/admin/tenant-admin/roles/TenantRoleManagementPage'));
+const TenantSettingsPage = lazy(() => import('./pages/admin/tenant-admin/settings/TenantSettingsPage'));
+const TenantAuditLogPage = lazy(() => import('./pages/admin/tenant-admin/audit/TenantAuditLogPage'));
+const UserListPage = lazy(() => import('./pages/admin/users/UserListPage'));
+const UserDetailPage = lazy(() => import('./pages/admin/users/UserDetailPage'));
+const RoleManagementPage = lazy(() => import('./pages/admin/users/RoleManagementPage'));
+import SettingsPage from './pages/shared/SettingsPage';
+import ProfilePage from './pages/shared/ProfilePage';
+import SecurityPage from './pages/shared/SecurityPage';
+import NotificationsPage from './pages/shared/NotificationsPage';
+import CompliancePage from './pages/shared/CompliancePage';
+import ApiKeysPage from './pages/shared/ApiKeysPage';
+import BillingSettingsPage from './pages/reception/billing/BillingSettingsPage';
+import InvoicesListPage from './pages/reception/billing/InvoicesListPage';
+import InvoiceCreatePage from './pages/reception/billing/InvoiceCreatePage';
+import InvoiceDetailPage from './pages/reception/billing/InvoiceDetailPage';
+import InvoiceEditPage from './pages/reception/billing/InvoiceEditPage';
+import PaymentsPage from './pages/finance/payments/PaymentsPage';
+import ServiceFeesPage from './pages/finance/billing/ServiceFeesPage';
+import FinancialReportsPage from './pages/finance/reports/FinancialReportsPage';
 
-const staffRoles = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'PROVIDER', 'CLINICIAN', 'STAFF', 'RECEPTION', 'RECEPTIONIST', 'MANAGER'] as const;
-const patientOperationsRoles = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'PROVIDER', 'CLINICIAN', 'STAFF', 'RECEPTION', 'RECEPTIONIST', 'MANAGER'] as const;
-const appointmentRoles = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'PROVIDER', 'CLINICIAN', 'STAFF', 'RECEPTION', 'RECEPTIONIST', 'MANAGER'] as const;
-const clinicalRoles = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'PROVIDER', 'CLINICIAN'] as const;
-const clinicalRecordRoles = ['TENANT_ADMIN', 'ADMIN', 'PROVIDER', 'CLINICIAN', 'STAFF', 'RECEPTION', 'MANAGER'] as const;
-const billingRoles = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'FINANCE', 'MANAGER'] as const;
+const allRoles: Role[] = [...ROLES];
+const adminRoles: Role[] = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN'];
+const clinicalRoles: Role[] = ['PROVIDER', 'CLINICIAN'];
+const receptionRoles: Role[] = ['RECEPTION', 'RECEPTIONIST', 'STAFF'];
+const financeRoles: Role[] = ['FINANCE', 'MANAGER'];
+
+const guard = (roles: Role[], page: ReactNode) => (
+  <RoleGate allow={roles} fallback={<Navigate to="/unauthorized" replace />}>
+    {page}
+  </RoleGate>
+);
+
+function RoleHomeRedirect() {
+  const role = useAuthStore((state) => state.user?.role);
+  const homeByRole: Record<Role, string> = {
+    SUPER_ADMIN: '/admin/super',
+    TENANT_ADMIN: '/admin/tenant',
+    ADMIN: '/admin/dashboard',
+    PROVIDER: '/clinical/dashboard',
+    CLINICIAN: '/clinical/dashboard',
+    RECEPTION: '/reception/dashboard',
+    RECEPTIONIST: '/reception/dashboard',
+    STAFF: '/reception/dashboard',
+    FINANCE: '/finance/dashboard',
+    MANAGER: '/finance/dashboard',
+    PATIENT: '/portal',
+    CONSENT_MANAGER: '/shared/settings',
+    PRIVACY_OFFICER: '/shared/settings',
+  };
+  return <Navigate to={role ? homeByRole[role] : '/not-found'} replace />;
+}
+
+function AdminHomeRedirect() {
+  const role = useAuthStore((state) => state.user?.role);
+  const home = role === 'SUPER_ADMIN'
+    ? '/admin/super'
+    : role === 'TENANT_ADMIN'
+      ? '/admin/tenant'
+      : '/admin/dashboard';
+  return <Navigate to={home} replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -106,85 +136,133 @@ export const router = createBrowserRouter([
           { path: 'pending-approval', element: <PendingApprovalPage /> },
         ],
       },
+      {
+        path: 'login',
+        element: <AuthLayout />,
+        children: [{ index: true, element: <LoginPage /> }],
+      },
     ],
   },
   {
     path: '/',
-    element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
+    element: <ProtectedRoute><Suspense fallback={<div className="flex min-h-screen items-center justify-center" role="status">Loading page…</div>}><AppLayout /></Suspense></ProtectedRoute>,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <RoleGate allow={[...staffRoles]}><DashboardPage /></RoleGate> },
-      { path: 'patients', element: <RoleGate allow={[...patientOperationsRoles]}><PatientsListPage /></RoleGate> },
-      { path: 'patients/new', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'STAFF', 'RECEPTION', 'RECEPTIONIST']}><PatientCreatePage /></RoleGate> },
-      { path: 'patients/:patientId', element: <RoleGate allow={[...patientOperationsRoles]}><PatientDetailPage /></RoleGate> },
-      { path: 'patients/:patientId/edit', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'STAFF', 'RECEPTION', 'RECEPTIONIST']}><PatientEditPage /></RoleGate> },
-      { path: 'patients/:patientId/documents', element: <RoleGate allow={[...patientOperationsRoles]}><PatientDocumentsPage /></RoleGate> },
-      { path: 'providers', element: <RoleGate allow={[...clinicalRoles, 'MANAGER']}><ProvidersListPage /></RoleGate> },
-      { path: 'providers/create', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'MANAGER']}><ProviderCreatePage /></RoleGate> },
-      { path: 'providers/:providerId/edit', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'MANAGER']}><ProviderEditPage /></RoleGate> },
-      { path: 'providers/:providerId', element: <RoleGate allow={[...clinicalRoles, 'MANAGER']}><ProviderDetailPage /></RoleGate> },
-      { path: 'appointments', element: <RoleGate allow={[...appointmentRoles]}><AppointmentsListPage /></RoleGate> },
-      { path: 'appointments/new', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'STAFF', 'RECEPTION', 'RECEPTIONIST']}><AppointmentCreatePage /></RoleGate> },
-      { path: 'appointments/:id', element: <RoleGate allow={[...appointmentRoles]}><AppointmentDetailPage /></RoleGate> },
-      { path: 'appointments/calendar', element: <RoleGate allow={[...appointmentRoles]}><CalendarPage /></RoleGate> },
-      { path: 'appointments/availability', element: <RoleGate allow={[...clinicalRoles, 'MANAGER']}><AvailabilityPage /></RoleGate> },
-      { path: 'notes', element: <RoleGate allow={[...clinicalRoles]}><NotesListPage /></RoleGate> },
-      { path: 'notes/new', element: <RoleGate allow={['ADMIN', 'TENANT_ADMIN', 'PROVIDER', 'CLINICIAN']}><NoteCreatePage /></RoleGate> },
-      { path: 'notes/:id', element: <RoleGate allow={[...clinicalRoles]}><NoteDetailPage /></RoleGate> },
-      { path: 'clinical/dental-charts', element: <RoleGate allow={[...clinicalRecordRoles]}><DentalChartsPage /></RoleGate> },
-      { path: 'clinical/eye-exams', element: <RoleGate allow={[...clinicalRecordRoles]}><EyeExamsPage /></RoleGate> },
-      { path: 'clinical/lab-results', element: <RoleGate allow={[...clinicalRecordRoles]}><LabResultsPage /></RoleGate> },
-      { path: 'invoices', element: <RoleGate allow={[...billingRoles]}><InvoicesListPage /></RoleGate> },
-      { path: 'invoices/new', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'FINANCE']}><InvoiceCreatePage /></RoleGate> },
-      { path: 'invoices/:invoiceId/edit', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'FINANCE']}><InvoiceEditPage /></RoleGate> },
-      { path: 'invoices/:invoiceId', element: <RoleGate allow={[...billingRoles]}><InvoiceDetailPage /></RoleGate> },
-      { path: 'billing/invoices', element: <RoleGate allow={[...billingRoles]}><InvoicesListPage /></RoleGate> },
-      { path: 'billing/invoices/create', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'FINANCE']}><InvoiceCreatePage /></RoleGate> },
-      { path: 'billing/invoices/:invoiceId/edit', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'FINANCE']}><InvoiceEditPage /></RoleGate> },
-      { path: 'billing/invoices/:invoiceId', element: <RoleGate allow={[...billingRoles]}><InvoiceDetailPage /></RoleGate> },
-      { path: 'payments', element: <RoleGate allow={[...billingRoles]}><PaymentsPage /></RoleGate> },
-      { path: 'settings', element: <RoleGate allow={[...staffRoles, 'FINANCE', 'CONSENT_MANAGER', 'PRIVACY_OFFICER']}><SettingsPage /></RoleGate> },
-      { path: 'settings/profile', element: <ProfilePage /> },
-      { path: 'portal', element: <RoleGate allow={['PATIENT']}><PatientDashboardPage /></RoleGate> },
-      { path: 'portal/appointments', element: <RoleGate allow={['PATIENT']}><MyAppointmentsPage /></RoleGate> },
-      { path: 'portal/records', element: <RoleGate allow={['PATIENT']}><MyRecordsPage /></RoleGate> },
-      { path: 'portal/billing', element: <RoleGate allow={['PATIENT']}><MyBillingPage /></RoleGate> },
-      { path: 'admin/super', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminDashboardPage /></RoleGate> },
-      { path: 'admin/super/users', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminUserListPage /></RoleGate> },
-      { path: 'admin/super/users/new', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminUserCreatePage /></RoleGate> },
-      { path: 'admin/super/users/:userId', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminUserDetailPage /></RoleGate> },
-      { path: 'admin/super/tenants', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminTenantListPage /></RoleGate> },
-      { path: 'admin/super/tenants/new', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminTenantCreatePage /></RoleGate> },
-      { path: 'admin/super/tenants/:tenantId/admins', element: <RoleGate allow={['SUPER_ADMIN']}><TenantAdminsPage /></RoleGate> },
-      { path: 'admin/super/tenants/:tenantId', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminTenantDetailPage /></RoleGate> },
-      { path: 'admin/super/registration/requests', element: <RoleGate allow={['SUPER_ADMIN']}><RegistrationRequestsPage /></RoleGate> },
-      { path: 'admin/super/registration/activations', element: <RoleGate allow={['SUPER_ADMIN']}><PendingActivationsPage /></RoleGate> },
-      { path: 'admin/super/registration/provision-staff', element: <RoleGate allow={['SUPER_ADMIN']}><ProvisionStaffPage /></RoleGate> },
-      { path: 'admin/super/registration/settings', element: <RoleGate allow={['SUPER_ADMIN']}><RegistrationSettingsPage /></RoleGate> },
-      { path: 'admin/super/roles', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminRoleManagementPage /></RoleGate> },
-      { path: 'admin/super/audit', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminAuditLogPage /></RoleGate> },
-      { path: 'admin/super/activity', element: <RoleGate allow={['SUPER_ADMIN']}><SystemActivityPage /></RoleGate> },
-      { path: 'admin/super/settings', element: <RoleGate allow={['SUPER_ADMIN']}><GlobalSettingsPage /></RoleGate> },
-      { path: 'admin/super/integrations', element: <RoleGate allow={['SUPER_ADMIN']}><IntegrationsPage /></RoleGate> },
-      { path: 'admin/super/revenue', element: <RoleGate allow={['SUPER_ADMIN']}><RevenuePage /></RoleGate> },
-      { path: 'admin/super/subscriptions', element: <RoleGate allow={['SUPER_ADMIN']}><SubscriptionsPage /></RoleGate> },
-      { path: 'admin/tenant', element: <RoleGate allow={['TENANT_ADMIN']}><TenantAdminDashboardPage /></RoleGate> },
-      { path: 'admin/tenant/staff', element: <RoleGate allow={['TENANT_ADMIN']}><StaffListPage /></RoleGate> },
-      { path: 'admin/tenant/staff/new', element: <RoleGate allow={['TENANT_ADMIN']}><StaffCreatePage /></RoleGate> },
-      { path: 'admin/tenant/staff/invite', element: <RoleGate allow={['TENANT_ADMIN']}><StaffInvitePage /></RoleGate> },
-      { path: 'admin/tenant/staff/:userId', element: <RoleGate allow={['TENANT_ADMIN']}><StaffDetailPage /></RoleGate> },
-      { path: 'admin/tenant/users', element: <RoleGate allow={['TENANT_ADMIN']}><TenantUserListPage /></RoleGate> },
-      { path: 'admin/tenant/users/new', element: <RoleGate allow={['TENANT_ADMIN']}><TenantUserCreatePage /></RoleGate> },
-      { path: 'admin/tenant/users/:userId', element: <RoleGate allow={['TENANT_ADMIN']}><TenantUserDetailPage /></RoleGate> },
-      { path: 'admin/tenant/registration/patients', element: <RoleGate allow={['TENANT_ADMIN']}><PatientRegistrationsPage /></RoleGate> },
-      { path: 'admin/tenant/registration/approvals', element: <RoleGate allow={['TENANT_ADMIN']}><PendingApprovalsPage /></RoleGate> },
-      { path: 'admin/tenant/registration/staff', element: <RoleGate allow={['TENANT_ADMIN']}><StaffProvisioningPage /></RoleGate> },
-      { path: 'admin/tenant/roles', element: <RoleGate allow={['TENANT_ADMIN']}><TenantRoleManagementPage /></RoleGate> },
-      { path: 'admin/tenant/settings', element: <RoleGate allow={['TENANT_ADMIN']}><TenantSettingsPage /></RoleGate> },
-      { path: 'admin/tenant/audit', element: <RoleGate allow={['TENANT_ADMIN']}><TenantAuditLogPage /></RoleGate> },
-      { path: 'admin/audit', element: <RoleGate allow={['SUPER_ADMIN', 'TENANT_ADMIN', 'PRIVACY_OFFICER']}><AuditLogPage /></RoleGate> },
-      { path: 'admin/tenants', element: <RoleGate allow={['SUPER_ADMIN']}><SuperAdminTenantListPage /></RoleGate> },
+      { index: true, element: guard(allRoles, <RoleHomeRedirect />) },
+      { path: 'dashboard', element: guard(allRoles, <RoleHomeRedirect />) },
+      { path: 'not-found', element: <NotFoundPage /> },
+      { path: 'unauthorized', element: <NotFoundPage /> },
+      {
+        path: 'admin',
+        element: guard(adminRoles, <Outlet />),
+        children: [
+          { index: true, element: <AdminHomeRedirect /> },
+          { path: 'dashboard', element: guard(['ADMIN'], <AdminDashboardPage />) },
+          { path: 'audit', element: guard(['ADMIN'], <AuditLogPage />) },
+          { path: 'users', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN'], <UserListPage />) },
+          { path: 'users/:userId', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN'], <UserDetailPage />) },
+          { path: 'roles', element: guard(['ADMIN'], <RoleManagementPage />) },
+          { path: 'super', element: guard(['SUPER_ADMIN'], <SuperAdminDashboardPage />) },
+          { path: 'super/dashboard', element: guard(['SUPER_ADMIN'], <SuperAdminDashboardPage />) },
+          { path: 'super/health', element: guard(['SUPER_ADMIN'], <AdminDashboardPage platformMode />) },
+          { path: 'super/users', element: guard(['SUPER_ADMIN'], <SuperAdminUserListPage />) },
+          { path: 'super/users/new', element: guard(['SUPER_ADMIN'], <SuperAdminUserCreatePage />) },
+          { path: 'super/users/create', element: guard(['SUPER_ADMIN'], <SuperAdminUserCreatePage />) },
+          { path: 'super/users/:userId', element: guard(['SUPER_ADMIN'], <SuperAdminUserDetailPage />) },
+          { path: 'super/tenants', element: guard(['SUPER_ADMIN'], <SuperAdminTenantListPage />) },
+          { path: 'super/tenants/new', element: guard(['SUPER_ADMIN'], <SuperAdminTenantCreatePage />) },
+          { path: 'super/tenants/create', element: guard(['SUPER_ADMIN'], <SuperAdminTenantCreatePage />) },
+          { path: 'super/tenants/:tenantId/admins', element: guard(['SUPER_ADMIN'], <TenantAdminsPage />) },
+          { path: 'super/tenants/:tenantId', element: guard(['SUPER_ADMIN'], <SuperAdminTenantDetailPage />) },
+          { path: 'super/registration/requests', element: guard(['SUPER_ADMIN'], <RegistrationRequestsPage />) },
+          { path: 'super/registration/activations', element: guard(['SUPER_ADMIN'], <PendingActivationsPage />) },
+          { path: 'super/registration/pending-activations', element: guard(['SUPER_ADMIN'], <PendingActivationsPage />) },
+          { path: 'super/registration/provision-staff', element: guard(['SUPER_ADMIN'], <ProvisionStaffPage />) },
+          { path: 'super/registration/provision', element: guard(['SUPER_ADMIN'], <ProvisionStaffPage />) },
+          { path: 'super/registration/settings', element: guard(['SUPER_ADMIN'], <RegistrationSettingsPage />) },
+          { path: 'super/roles', element: guard(['SUPER_ADMIN'], <SuperAdminRoleManagementPage />) },
+          { path: 'super/audit', element: guard(['SUPER_ADMIN'], <SuperAdminAuditLogPage />) },
+          { path: 'super/activity', element: guard(['SUPER_ADMIN'], <SystemActivityPage />) },
+          { path: 'super/settings', element: guard(['SUPER_ADMIN'], <GlobalSettingsPage />) },
+          { path: 'super/integrations', element: guard(['SUPER_ADMIN'], <IntegrationsPage />) },
+          { path: 'super/revenue', element: guard(['SUPER_ADMIN'], <RevenuePage />) },
+          { path: 'super/subscriptions', element: guard(['SUPER_ADMIN'], <SubscriptionsPage />) },
+          { path: 'tenants', element: guard(['SUPER_ADMIN'], <SuperAdminTenantListPage />) },
+          { path: 'tenant', element: guard(['TENANT_ADMIN'], <TenantAdminDashboardPage />) },
+          { path: 'tenant/staff', element: guard(['TENANT_ADMIN'], <StaffListPage />) },
+          { path: 'tenant/staff/new', element: guard(['TENANT_ADMIN'], <StaffCreatePage />) },
+          { path: 'tenant/staff/invite', element: guard(['TENANT_ADMIN'], <StaffInvitePage />) },
+          { path: 'tenant/staff/:userId', element: guard(['TENANT_ADMIN'], <StaffDetailPage />) },
+          { path: 'tenant/users', element: guard(['TENANT_ADMIN'], <TenantUserListPage />) },
+          { path: 'tenant/users/new', element: guard(['TENANT_ADMIN'], <TenantUserCreatePage />) },
+          { path: 'tenant/users/:userId', element: guard(['TENANT_ADMIN'], <TenantUserDetailPage />) },
+          { path: 'tenant/registration/patients', element: guard(['TENANT_ADMIN'], <PatientRegistrationsPage />) },
+          { path: 'tenant/registration/approvals', element: guard(['TENANT_ADMIN'], <PendingApprovalsPage />) },
+          { path: 'tenant/registration/staff', element: guard(['TENANT_ADMIN'], <StaffProvisioningPage />) },
+          { path: 'tenant/roles', element: guard(['TENANT_ADMIN'], <TenantRoleManagementPage />) },
+          { path: 'tenant/settings', element: guard(['TENANT_ADMIN'], <TenantSettingsPage />) },
+          { path: 'tenant/audit', element: guard(['TENANT_ADMIN'], <TenantAuditLogPage />) },
+        ],
+      },
+      {
+        path: 'clinical',
+        element: guard(clinicalRoles, <Outlet />),
+        children: [
+          { index: true, element: <Navigate to="/clinical/dashboard" replace /> },
+          { path: 'dashboard', element: <Navigate to="/clinical/dental-charts" replace /> },
+          { path: 'dental-charts', element: <DentalChartsPage /> },
+          { path: 'eye-exams', element: <EyeExamsPage /> },
+          { path: 'lab-results', element: <LabResultsPage /> },
+        ],
+      },
+      {
+        path: 'reception',
+        element: guard(receptionRoles, <Outlet />),
+        children: [
+          { index: true, element: <Navigate to="/reception/dashboard" replace /> },
+          { path: 'dashboard', element: <Navigate to="/reception/billing/invoices" replace /> },
+          { path: 'billing/settings', element: <BillingSettingsPage /> },
+          { path: 'billing/invoices', element: <InvoicesListPage /> },
+          { path: 'billing/invoices/new', element: <InvoiceCreatePage /> },
+          { path: 'billing/invoices/:invoiceId/edit', element: <InvoiceEditPage /> },
+          { path: 'billing/invoices/:invoiceId', element: <InvoiceDetailPage /> },
+        ],
+      },
+      {
+        path: 'finance',
+        element: guard(financeRoles, <Outlet />),
+        children: [
+          { index: true, element: <Navigate to="/finance/dashboard" replace /> },
+          { path: 'dashboard', element: <Navigate to="/finance/reports" replace /> },
+          { path: 'payments', element: <PaymentsPage /> },
+          { path: 'service-fees', element: <ServiceFeesPage /> },
+          { path: 'reports', element: <FinancialReportsPage /> },
+          { path: 'invoices/:invoiceId', element: <InvoiceDetailPage /> },
+        ],
+      },
+      {
+        path: 'portal',
+        element: guard(['PATIENT'], <Outlet />),
+        children: [
+          { index: true, element: <PatientDashboardPage /> },
+          { path: 'appointments', element: <MyAppointmentsPage /> },
+          { path: 'records', element: <MyRecordsPage /> },
+          { path: 'billing', element: <MyBillingPage /> },
+        ],
+      },
+      {
+        path: 'shared',
+        element: guard(allRoles, <Outlet />),
+        children: [
+          { index: true, element: <Navigate to="/shared/settings" replace /> },
+          { path: 'settings', element: <SettingsPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'security', element: guard(allRoles.filter((role) => role !== 'PATIENT'), <SecurityPage />) },
+          { path: 'notifications', element: guard(allRoles.filter((role) => role !== 'PATIENT'), <NotificationsPage />) },
+          { path: 'compliance', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'CONSENT_MANAGER', 'PRIVACY_OFFICER'], <CompliancePage />) },
+          { path: 'api-keys', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN'], <ApiKeysPage />) },
+        ],
+      },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

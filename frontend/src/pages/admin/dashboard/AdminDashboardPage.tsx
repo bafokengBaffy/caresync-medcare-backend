@@ -1,212 +1,148 @@
-import { useEffect, useState } from "react";
-import { 
-  Users, 
-  CalendarCheck, 
-  CreditCard, 
-  Activity, 
-  ShieldAlert,
-  Server,
-  RefreshCw
-} from "lucide-react";
-import api from "../../../lib/api-client";
+import { useQuery } from '@tanstack/react-query';
+import { Activity, CircleAlert, CreditCard, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import api from '@/lib/api-client';
+import type { PatientSummary } from '@/types/patient';
+import type { Provider } from '@/types/provider';
+import type { PageResponse } from '@/types/common';
 
-// --- Types ---
-interface DashboardStats {
-  totalPatients: number;
-  totalAppointments: number;
-  totalRevenue: number;
-  systemStatus: "healthy" | "degraded" | "down";
-  recentAuditLogs: AuditLogEntry[];
+interface BillingSummary {
+  totalOutstandingCents: number;
+  totalPaidCents: number;
 }
 
-interface AuditLogEntry {
-  id: string;
-  action: string;
-  entityType: string;
-  timestamp: string;
-  actorEmail: string;
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Users;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{label}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      </CardHeader>
+      <CardContent>
+        <p className="text-2xl font-bold">{value}</p>
+      </CardContent>
+    </Card>
+  );
 }
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function metricValue<T>(
+  query: { isLoading: boolean; isError: boolean; data: T | undefined },
+  value: (data: T) => string,
+) {
+  if (query.isLoading) return 'Loading';
+  if (query.isError || query.data === undefined) return 'Unavailable';
+  return value(query.data);
+}
 
-  const loadDashboardData = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Assuming your gateway aggregates or proxies this
-      // You may need to change this endpoint based on your Spring Boot Gateway routes
-      const response = await api.get<DashboardStats>("/api/admin/dashboard/stats");
-      setStats(response.data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function AdminDashboardPage({ platformMode = false }: { platformMode?: boolean }) {
+  const patients = useQuery({
+    queryKey: ['health-dashboard', 'patients'],
+    queryFn: async () => (await api.get<PageResponse<PatientSummary>>(
+      '/api/v1/patients',
+      { params: { page: 0, size: 1 } },
+    )).data,
+  });
+  const providers = useQuery({
+    queryKey: ['health-dashboard', 'providers'],
+    queryFn: async () => (await api.get<PageResponse<Provider>>(
+      '/api/v1/providers',
+      { params: { page: 0, size: 1, status: 'ACTIVE' } },
+    )).data,
+  });
+  const billing = useQuery({
+    queryKey: ['health-dashboard', 'billing-summary'],
+    queryFn: async () => (await api.get<BillingSummary>('/api/v1/invoices/summary')).data,
+  });
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  // --- Loading State ---
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center p-8">
-        <RefreshCw className="h-8 w-8 animate-spin text-slate-500" />
-        <span className="ml-3 text-lg font-medium text-slate-600">Loading Dashboard...</span>
-      </div>
-    );
-  }
-
-  // --- Error State ---
-  if (error) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-        <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">Access Error</h2>
-        <p className="mt-2 text-slate-500">{error}</p>
-        <button
-          onClick={loadDashboardData}
-          className="mt-6 flex items-center rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800"
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Retry Connection
-        </button>
-      </div>
-    );
-  }
+  const failed = patients.isError || providers.isError || billing.isError;
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">System Administration</h1>
-          <p className="text-sm text-slate-500">Monitor platform health, revenue, and security.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{platformMode ? 'Selected tenant health' : 'Health management'}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {platformMode
+              ? 'Health metrics for the tenant selected in the top bar; this is not a cross-platform aggregate.'
+              : 'Tenant-scoped operational metrics and administration tools.'}
+          </p>
         </div>
-        <button
-          onClick={loadDashboardData}
-          className="flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          <RefreshCw className="mr-2 h-4 w-4 text-slate-500" />
-          Refresh Data
-        </button>
+        {failed && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void patients.refetch();
+              void providers.refetch();
+              void billing.refetch();
+            }}
+          >
+            Retry loading
+          </Button>
+        )}
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Patients */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Total Patients</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.totalPatients || 0}</p>
-            </div>
-            <div className="rounded-full bg-blue-50 p-3">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
+      {failed && (
+        <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>One or more dashboard metrics could not be loaded. Unavailable data is not shown as zero.</span>
         </div>
+      )}
 
-        {/* Card 2: Appointments */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Appointments</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.totalAppointments || 0}</p>
-            </div>
-            <div className="rounded-full bg-green-50 p-3">
-              <CalendarCheck className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
+      <section aria-label="Health management metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard
+          label="Patients"
+          value={metricValue(patients, (data) => String(data.total))}
+          icon={Users}
+        />
+        <MetricCard
+          label="Active providers"
+          value={metricValue(providers, (data) => String(data.total))}
+          icon={Activity}
+        />
+        <MetricCard
+          label="Outstanding invoice balance"
+          value={metricValue(billing, (data) =>
+            new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
+              .format(data.totalOutstandingCents / 100),
+          )}
+          icon={CreditCard}
+        />
+      </section>
+      <p className="text-xs text-muted-foreground">Billing values are shown in minor units converted to major units; the billing API does not provide a currency code.</p>
 
-        {/* Card 3: Revenue */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Total Revenue</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                ${stats?.totalRevenue?.toLocaleString() || 0}
-              </p>
-            </div>
-            <div className="rounded-full bg-purple-50 p-3">
-              <CreditCard className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: System Status */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">System Health</p>
-              <div className="mt-2 flex items-center">
-                <span
-                  className={`mr-2 h-3 w-3 rounded-full ${
-                    stats?.systemStatus === "healthy"
-                      ? "bg-green-500"
-                      : stats?.systemStatus === "degraded"
-                      ? "bg-yellow-500"
-                      : "bg-red-500"
-                  }`}
-                />
-                <p className="text-xl font-bold capitalize text-slate-900">
-                  {stats?.systemStatus || "Unknown"}
-                </p>
-              </div>
-            </div>
-            <div className="rounded-full bg-slate-50 p-3">
-              <Server className="h-6 w-6 text-slate-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Audit Logs Section (OWASP Requirement for Traceability) */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="flex items-center text-lg font-semibold text-slate-900">
-            <Activity className="mr-2 h-5 w-5 text-slate-500" />
-            Recent Security Activity
-          </h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-6 py-3 font-medium">Action</th>
-                <th className="px-6 py-3 font-medium">Entity</th>
-                <th className="px-6 py-3 font-medium">Actor</th>
-                <th className="px-6 py-3 font-medium">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {stats?.recentAuditLogs?.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
-                    No recent activity found.
-                  </td>
-                </tr>
-              ) : (
-                stats?.recentAuditLogs?.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 font-medium text-slate-900">{log.action}</td>
-                    <td className="px-6 py-4">{log.entityType}</td>
-                    <td className="px-6 py-4">{log.actorEmail}</td>
-                    <td className="px-6 py-4 text-slate-500">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick actions</CardTitle>
+          <p className="text-sm text-muted-foreground">Open the most-used administration workflows.</p>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          {platformMode ? (
+            <>
+              <Button asChild><Link to="/admin/super/tenants">Manage tenants</Link></Button>
+              <Button asChild variant="outline"><Link to="/admin/super/audit">Platform audit</Link></Button>
+              <Button asChild variant="outline"><Link to="/admin/super">Platform dashboard</Link></Button>
+            </>
+          ) : (
+            <>
+              <Button asChild><Link to="/admin/audit">Review tenant audit</Link></Button>
+              <Button asChild variant="outline"><Link to="/admin/roles">Review role access</Link></Button>
+              <Button asChild variant="outline"><Link to="/shared/profile">Edit profile</Link></Button>
+              <Button asChild variant="outline"><Link to="/shared/compliance">Compliance</Link></Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

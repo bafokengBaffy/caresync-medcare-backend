@@ -121,6 +121,7 @@ export default function RegistrationSettingsPage() {
   const [savedSettings, setSavedSettings] = useState<RegistrationSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -148,13 +149,15 @@ export default function RegistrationSettingsPage() {
           }),
         ]);
         if (settingsRes.ok) {
-          const data = await settingsRes.json();
+          setRevision(Number(String(settingsRes.headers.get('ETag') ?? '0').replaceAll('"', '')));
+          const response = await settingsRes.json();
+          const data = response.data ?? response;
           setSettings({ ...DEFAULT_SETTINGS, ...data });
           setSavedSettings({ ...DEFAULT_SETTINGS, ...data });
         }
         if (tenantsRes.ok) {
           const tData = await tenantsRes.json();
-          setTenants(tData.content ?? []);
+          setTenants(tData.data?.content ?? tData.content ?? []);
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load settings');
@@ -174,13 +177,14 @@ export default function RegistrationSettingsPage() {
     try {
       const res = await fetch('/api/v1/admin/registration/settings', {
         method: 'PUT',
-        headers: authHeaders(),
+        headers: { ...authHeaders(), 'If-Match': String(revision) },
         body: JSON.stringify(settings),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Save failed');
       }
+      setRevision(Number(String(res.headers.get('ETag') ?? String(revision + 1)).replaceAll('"', '')));
       setSavedSettings(settings);
       toast.success('Registration settings saved');
     } catch (e) {
@@ -209,23 +213,23 @@ export default function RegistrationSettingsPage() {
   // ───────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center dark:bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50 pb-24 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-5 sticky top-0 z-20">
+      <div className="bg-white border-b border-gray-200 px-6 py-5 sticky top-0 z-20 dark:bg-slate-900 dark:border-slate-700">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2 dark:text-slate-50">
               <Settings className="w-5 h-5 text-indigo-600" />
               Registration Settings
             </h1>
-            <p className="mt-0.5 text-sm text-gray-500">
+            <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">
               Global control over public sign-up, request approvals and provisioning defaults.
             </p>
           </div>
@@ -233,7 +237,7 @@ export default function RegistrationSettingsPage() {
             {dirty && (
               <button
                 onClick={reset}
-                className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Reset
@@ -268,7 +272,7 @@ export default function RegistrationSettingsPage() {
       <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col lg:flex-row gap-6">
         {/* Sidebar nav */}
         <aside className="w-full lg:w-56 flex-shrink-0">
-          <nav className="bg-white rounded-lg border border-gray-200 shadow-sm p-2 sticky top-24 space-y-1">
+          <nav className="bg-white rounded-lg border border-gray-200 shadow-sm p-2 sticky top-24 space-y-1 dark:bg-slate-900 dark:border-slate-700">
             {[
               { id: 'signup', label: 'Public Sign-up', icon: UserPlus },
               { id: 'requests', label: 'Request Queue', icon: ListChecks },
@@ -280,12 +284,8 @@ export default function RegistrationSettingsPage() {
               return (
                 <button
                   key={s.id}
-                  onClick={() => setActiveSection(s.id as any)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    active
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
+                  onClick={() => setActiveSection(s.id as typeof activeSection)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${ active ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50 dark:bg-slate-950' } dark:hover:bg-slate-950`}
                 >
                   <Icon className="w-4 h-4" />
                   {s.label}
@@ -317,7 +317,7 @@ export default function RegistrationSettingsPage() {
                   }
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-200 dark:border-slate-700">
                   <ToggleRow
                     label="Password sign-up"
                     description="Users can sign up with email + password"
@@ -368,7 +368,7 @@ export default function RegistrationSettingsPage() {
                   </p>
                 </div>
 
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">
                   Roles available in public signup
                 </label>
                 <div className="space-y-2">
@@ -384,13 +384,7 @@ export default function RegistrationSettingsPage() {
                     return (
                       <label
                         key={role.id}
-                        className={`flex items-start gap-3 p-3 rounded-lg border ${
-                          locked
-                            ? 'bg-gray-50 border-gray-200 opacity-75'
-                            : checked
-                            ? 'bg-indigo-50 border-indigo-200'
-                            : 'bg-white border-gray-200 hover:border-gray-300'
-                        } ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${ locked ? 'bg-gray-50 border-gray-200 opacity-75' : checked ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-200 hover:border-gray-300 dark:border-slate-600' } ${locked ? 'cursor-not-allowed' : 'cursor-pointer'} dark:border-slate-700 dark:border-slate-700 dark:hover:border-slate-600`}
                       >
                         <input
                           type="checkbox"
@@ -409,18 +403,18 @@ export default function RegistrationSettingsPage() {
                               );
                             }
                           }}
-                          className="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                          className="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded dark:border-slate-600"
                         />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900 flex items-center gap-2 dark:text-slate-50">
                             {role.label}
                             {locked && (
-                              <span className="text-[10px] uppercase bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] uppercase bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded dark:bg-slate-800 dark:text-slate-300">
                                 Admin-only
                               </span>
                             )}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">{role.desc}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{role.desc}</p>
                         </div>
                       </label>
                     );
@@ -441,11 +435,11 @@ export default function RegistrationSettingsPage() {
                   compact
                 />
 
-                <div className="pt-3 border-t border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">
                     Allowed email domains (optional)
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">
+                  <p className="text-xs text-gray-500 mb-2 dark:text-slate-400">
                     Leave empty to allow any domain. Otherwise, only these domains may sign
                     up. Patients can still be registered by staff.
                   </p>
@@ -453,7 +447,7 @@ export default function RegistrationSettingsPage() {
                     {settings.allowedEmailDomains.map((d) => (
                       <span
                         key={d}
-                        className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
+                        className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded dark:bg-slate-900 dark:text-slate-200"
                       >
                         {d}
                         <button
@@ -463,7 +457,7 @@ export default function RegistrationSettingsPage() {
                               settings.allowedEmailDomains.filter((x) => x !== d)
                             )
                           }
-                          className="text-gray-400 hover:text-red-600"
+                          className="text-gray-400 hover:text-red-600 dark:text-slate-300"
                         >
                           ×
                         </button>
@@ -476,7 +470,7 @@ export default function RegistrationSettingsPage() {
                       value={newDomain}
                       onChange={(e) => setNewDomain(e.target.value)}
                       placeholder="e.g. cityhealth.co.za"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                     />
                     <button
                       onClick={() => {
@@ -591,30 +585,30 @@ export default function RegistrationSettingsPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">
                       Default role
                     </label>
                     <select
                       value={settings.defaultRole}
                       onChange={(e) => update('defaultRole', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                     >
                       <option value="PATIENT">Patient</option>
                       <option value="STAFF">Staff</option>
                       <option value="RECEPTIONIST">Receptionist</option>
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       Only non-privileged roles can be a default.
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">
                       Default tenant (optional)
                     </label>
                     <select
                       value={settings.defaultTenantId}
                       onChange={(e) => update('defaultTenantId', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                     >
                       <option value="">No default (must be assigned)</option>
                       {tenants.map((t) => (
@@ -792,7 +786,7 @@ export default function RegistrationSettingsPage() {
 
       {/* Sticky save bar */}
       {dirty && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-30">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-30 dark:bg-slate-900 dark:border-slate-700">
           <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-amber-700">
               <AlertCircle className="w-4 h-4" />
@@ -801,7 +795,7 @@ export default function RegistrationSettingsPage() {
             <div className="flex gap-2">
               <button
                 onClick={reset}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
               >
                 Discard
               </button>
@@ -840,13 +834,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-xl border border-gray-200 shadow-sm">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+    <section className="bg-white rounded-xl border border-gray-200 shadow-sm dark:bg-slate-900 dark:border-slate-700">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+        <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2 dark:text-slate-50">
           <Icon className="w-5 h-5 text-indigo-500" />
           {title}
         </h2>
-        <p className="mt-0.5 text-sm text-gray-500">{description}</p>
+        <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{description}</p>
       </div>
       <div className="p-6 space-y-4">{children}</div>
     </section>
@@ -877,8 +871,8 @@ function ToggleRow({
       }`}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-slate-50">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{description}</p>
         {warning && (
           <p className="mt-1.5 text-xs text-amber-700 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3 flex-shrink-0" />
@@ -890,14 +884,10 @@ function ToggleRow({
         type="button"
         onClick={() => !disabled && onChange(!checked)}
         disabled={disabled}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed ${
-          checked ? 'bg-indigo-600' : 'bg-gray-200'
-        }`}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed ${ checked ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-slate-800' }`}
       >
         <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-            checked ? 'translate-x-5' : 'translate-x-0'
-          }`}
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${ checked ? 'translate-x-5' : 'translate-x-0' } dark:bg-slate-900`}
         />
       </button>
     </div>
@@ -923,9 +913,9 @@ function NumberField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">{label}</label>
       <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none dark:text-slate-300" />
         <input
           type="number"
           value={value}
@@ -935,10 +925,10 @@ function NumberField({
           }}
           min={min}
           max={max}
-          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
         />
       </div>
-      <p className="mt-1 text-xs text-gray-500">{description}</p>
+      <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{description}</p>
     </div>
   );
 }

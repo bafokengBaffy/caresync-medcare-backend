@@ -38,7 +38,7 @@ public class AdminRoleService {
 
     public List<RoleConfigurationResponse> list(CaresyncPrincipal actor) {
         return ROLES.stream().sorted().map(role -> {
-            JsonNode saved = configurations.getPlatform(actor, roleKey(role));
+            JsonNode saved = configurations.getPlatform(actor, roleKey(role)).settings();
             Map<String, Boolean> permissions = defaults(role);
             if (saved.isObject()) {
                 saved.fields().forEachRemaining(entry -> {
@@ -74,7 +74,9 @@ public class AdminRoleService {
         permissions.putAll(request.permissions());
         ObjectNode stored = objectMapper.createObjectNode();
         permissions.forEach(stored::put);
-        configurations.putPlatform(actor, roleKey(role), stored);
+        String key = roleKey(role);
+        long revision = configurations.getPlatform(actor, key).revision();
+        configurations.putPlatform(actor, key, stored, revision);
         return new RoleConfigurationResponse(
             role, role, roleDescription(role), true, "TENANT", Map.copyOf(permissions)
         );

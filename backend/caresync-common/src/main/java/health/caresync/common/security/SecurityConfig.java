@@ -3,6 +3,7 @@ package health.caresync.common.security;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -23,7 +24,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(
         HttpSecurity http,
         FirebaseJwtFilter firebaseJwtFilter,
-        TenantContextFilter tenantContextFilter
+        TenantContextFilter tenantContextFilter,
+        MfaEnforcementFilter mfaEnforcementFilter
     ) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
@@ -47,8 +49,16 @@ public class SecurityConfig {
                 .accessDeniedHandler((request, response, exception) ->
                     response.sendError(403, "Access denied")))
             .addFilterBefore(firebaseJwtFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(tenantContextFilter, FirebaseJwtFilter.class);
+            .addFilterAfter(tenantContextFilter, FirebaseJwtFilter.class)
+            .addFilterAfter(mfaEnforcementFilter, TenantContextFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<MfaEnforcementFilter> mfaServletRegistration(MfaEnforcementFilter filter) {
+        FilterRegistrationBean<MfaEnforcementFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

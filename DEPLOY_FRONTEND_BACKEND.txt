@@ -16,21 +16,21 @@ cd backend
 # Clean patient service build
 .\mvnw.cmd -pl caresync-patient-service clean
 
-# Run Firebase sync service test
-.\mvnw.cmd -pl caresync-patient-service -Dtest=FirebaseUserSyncServiceTest test
+# Run admin configuration, tenant isolation, and Firebase claim regression tests
+.\mvnw.cmd -pl caresync-patient-service -am -Dtest=AdminConfigurationServiceTest,FirebaseUserSyncServiceTest,AdminTenantServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
 
 # Return to project root
 cd ..
 
-# Stage the backend tenant-admin claim, Render Blueprint, and deployment instructions
-git add backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java render.yaml DEPLOY_FRONTEND_BACKEND.txt
+# Stage the reviewed backend authorization, settings, migration, tests, and Render files
+git add backend/caresync-common/src/main/java/health/caresync/common/security/FirebaseJwtFilter.java backend/caresync-common/src/main/java/health/caresync/common/security/MfaEnforcementFilter.java backend/caresync-common/src/main/java/health/caresync/common/security/SecurityConfig.java backend/caresync-patient-service/src/main/java/health/caresync/patient/controller/AdminConfigurationController.java backend/caresync-patient-service/src/main/java/health/caresync/patient/controller/TenantAdminSettingsController.java backend/caresync-patient-service/src/main/java/health/caresync/patient/domain/entity/AdminConfiguration.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/AdminConfigurationService.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/AdminRoleService.java backend/caresync-patient-service/src/main/java/health/caresync/patient/service/FirebaseUserSyncService.java backend/caresync-patient-service/src/main/resources/db/migration/V32__admin_configuration_revisions.sql backend/caresync-patient-service/src/test/java/health/caresync/patient/AdminConfigurationServiceTest.java backend/caresync-patient-service/src/test/java/health/caresync/patient/FirebaseUserSyncServiceTest.java render.yaml DEPLOY_FRONTEND_BACKEND.txt
 
 # Review staged changes
 git diff --cached
 git status
 
 # Commit and push
-git commit -m "Configure tenant admin provisioning"
+git commit -m "Enforce versioned admin settings and MFA policy"
 git push origin main
 
 # Render settings when deploying from the root render.yaml Blueprint
@@ -85,7 +85,7 @@ cd ..
 git status
 
 # Stage reviewed frontend changes only
-git add frontend/src/pages/admin/users/RoleManagementPage.tsx frontend/src/pages/admin/system/IntegrationsPage.tsx frontend/src/pages/admin/super-admin/billing/RevenuePage.tsx frontend/src/lib/query-client.ts frontend/src/pages/admin/roles/RoleAccessGuide.tsx frontend/src/pages/admin/super-admin/audit/SystemActivityPage.tsx
+git add frontend/src/pages/admin/users/RoleManagementPage.tsx frontend/src/pages/admin/system/IntegrationsPage.tsx frontend/src/pages/admin/super-admin/billing/RevenuePage.tsx frontend/src/lib/query-client.ts frontend/src/pages/admin/roles/RoleAccessGuide.tsx frontend/src/pages/admin/super-admin/audit/SystemActivityPage.tsx frontend/src/pages/admin/dashboard/AdminDashboardPage.tsx frontend/src/router.tsx frontend/src/pages/admin/super-admin/system/GlobalSettingsPage.tsx frontend/src/pages/admin/tenant-admin/settings/TenantSettingsPage.tsx frontend/src/pages/admin/super-admin/registration/RegistrationSettingsPage.tsx
 
 # Review staged changes
 git diff --cached

@@ -2,6 +2,7 @@ package health.caresync.common.security;
 
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
+import health.caresync.common.constants.SecurityConstants;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -52,6 +54,7 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
 
         try {
             FirebaseToken token = tokenVerifier.verify(authorization.substring(7));
+            request.setAttribute(SecurityConstants.CLAIM_MFA_VERIFIED, hasVerifiedSecondFactor(token.getClaims()));
             String tenantClaim = token.getClaims().get(JwtClaims.TENANT_ID) instanceof String value
                 ? value
                 : null;
@@ -120,5 +123,13 @@ public class FirebaseJwtFilter extends OncePerRequestFilter {
             permissions.add(permission);
         }
         return Set.copyOf(permissions);
+    }
+
+    private static boolean hasVerifiedSecondFactor(Map<String, Object> claims) {
+        if (Boolean.TRUE.equals(claims.get(SecurityConstants.CLAIM_MFA_VERIFIED))) return true;
+        Object firebaseClaims = claims.get("firebase");
+        if (!(firebaseClaims instanceof Map<?, ?> firebase)) return false;
+        Object secondFactor = firebase.get("sign_in_second_factor");
+        return secondFactor instanceof String value && !value.isBlank();
     }
 }
