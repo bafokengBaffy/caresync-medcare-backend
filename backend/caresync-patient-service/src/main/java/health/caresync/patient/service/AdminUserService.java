@@ -39,7 +39,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @ConditionalOnProperty(name = "caresync.firebase.enabled", havingValue = "true")
 public class AdminUserService {
     private static final Set<String> ALLOWED_ROLES = Set.of(
-        "SUPER_ADMIN", "TENANT_ADMIN", "ADMIN", "PROVIDER", "STAFF", "RECEPTION",
+        "SUPER_ADMIN", "TENANT_ADMIN", "PROVIDER", "STAFF", "RECEPTION",
         "FINANCE", "MANAGER", "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER",
         "RECEPTIONIST", "PATIENT"
     );
@@ -99,7 +99,7 @@ public class AdminUserService {
         tenantRlsContext.apply(actor, tenantId);
 
         List<Object> parameters = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" WHERE u.deleted_at IS NULL");
+        StringBuilder where = new StringBuilder(" WHERE u.deleted_at IS NULL AND u.role IS DISTINCT FROM 'ADMIN'");
         if (tenantId != null) {
             where.append(" AND u.tenant_id = ?");
             parameters.add(tenantId);
@@ -257,6 +257,9 @@ public class AdminUserService {
     ) {
         requireUid(firebaseUid);
         requireRole(request.role());
+        if ("SUPER_ADMIN".equals(request.role())) {
+            throw new ForbiddenException("SUPER_ADMIN grants require the platform-owner bootstrap process");
+        }
         if (isPrivilegedRole(request.role()) && !"SUPER_ADMIN".equals(actor.role())) {
             throw new ForbiddenException("Only a platform administrator may assign platform roles");
         }
@@ -270,6 +273,9 @@ public class AdminUserService {
 
         AdminUserResponse existing = findUser(firebaseUid, tenantId)
             .orElseThrow(() -> new NotFoundException("User not found"));
+        if ("ADMIN".equals(existing.role()) && !"SUPER_ADMIN".equals(actor.role())) {
+            throw new ForbiddenException("Legacy ADMIN accounts require platform review before role changes");
+        }
         requireProviderData(request.role(), existing.fullName(), request.specialty());
         requirePatientLink(request.role(), request.patientId());
         UserRecord firebaseUser = getFirebaseUser(firebaseUid);
@@ -296,6 +302,13 @@ public class AdminUserService {
             replacePermissions(firebaseUid, tenantId, request.permissions(), actor.userId());
             linkProvider(firebaseUid, tenantId, existing.fullName(), request.role(), request.specialty());
             linkPatient(firebaseUid, tenantId, request.patientId(), request.role());
+            jdbcTemplate.update("""
+                UPDATE legacy_admin_role_reviews
+                SET review_status='MIGRATED', new_role=?, target_tenant_id=?, reviewed_by=?,
+                    reviewed_at=NOW(), decision_source='super-admin-reviewed-role-provisioning'
+                WHERE firebase_uid=? AND review_status='NEEDS_REVIEW'
+                  AND legacy_tenant_id IS NOT DISTINCT FROM ?
+                """, request.role(), tenantId, actor.userId(), firebaseUid, existing.tenantId());
             firebaseAuth.revokeRefreshTokens(firebaseUid);
             auditService.recordAdministrativeAction(
                 actor, tenantId, "USER_ROLE_UPDATED", "USER", firebaseUid, servletRequest
@@ -413,6 +426,9 @@ public class AdminUserService {
 
     private UUID targetTenant(CaresyncPrincipal actor, String role, UUID requestedTenantId) {
         requireRole(role);
+        if ("SUPER_ADMIN".equals(role)) {
+            throw new ForbiddenException("SUPER_ADMIN grants require the platform-owner bootstrap process");
+        }
         if (isPrivilegedRole(role) && (actor == null || !"SUPER_ADMIN".equals(actor.role()))) {
             throw new ForbiddenException("Only a platform administrator may assign platform roles");
         }
@@ -664,8 +680,26 @@ public class AdminUserService {
     }
 
     private static boolean isPrivilegedRole(String role) {
-        return "SUPER_ADMIN".equals(role) || "TENANT_ADMIN".equals(role);
+        return "TENANT_ADMIN".equals(role);
     }
+
+    public List<LegacyAdminRoleReview> legacyAdminRoleReviews(CaresyncPrincipal actor) {
+        if (actor == null || !"SUPER_ADMIN".equals(actor.role())) throw new ForbiddenException("Access denied");
+        return jdbcTemplate.query("""
+            SELECT firebase_uid, legacy_tenant_id, prior_role, review_status, migration_time,
+                   new_role, target_tenant_id, reviewed_by, reviewed_at, decision_source
+            FROM legacy_admin_role_reviews ORDER BY review_status, migration_time, firebase_uid
+            """, (rs, row) -> new LegacyAdminRoleReview(rs.getString("firebase_uid"),
+                rs.getObject("legacy_tenant_id", UUID.class), rs.getString("prior_role"),
+                rs.getString("review_status"), rs.getTimestamp("migration_time").toInstant(),
+                rs.getString("new_role"), rs.getObject("target_tenant_id", UUID.class),
+                rs.getString("reviewed_by"), rs.getTimestamp("reviewed_at") == null ? null : rs.getTimestamp("reviewed_at").toInstant(),
+                rs.getString("decision_source")));
+    }
+
+    public record LegacyAdminRoleReview(String firebaseUid, UUID legacyTenantId, String priorRole,
+        String reviewStatus, java.time.Instant migrationTime, String newRole, UUID targetTenantId,
+        String reviewedBy, java.time.Instant reviewedAt, String decisionSource) { }
 
     private static void validatePage(int page, int size) {
         if (page < 0 || size < 1 || size > 100) {

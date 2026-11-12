@@ -1,9 +1,18 @@
-﻿import axios, { AxiosError, AxiosHeaders, type AxiosInstance } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  type AxiosInstance,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { getAuth } from 'firebase/auth';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/auth-store';
+import { useTenantContextStore } from '@/stores/tenant-context-store';
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
-const apiBaseUrl = configuredApiBaseUrl || (import.meta.env.DEV ? '' : 'https://caresync-api-gateway.onrender.com');
+const apiBaseUrl = import.meta.env.DEV
+  ? ''
+  : configuredApiBaseUrl || 'https://caresync-medcare-backend.onrender.com';
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
@@ -12,6 +21,9 @@ const api: AxiosInstance = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
+  config.headers = AxiosHeaders.from(config.headers);
+  config.headers.delete('X-Tenant-Id');
+
   const auth = getAuth();
   const user = auth?.currentUser;
   if (user) {
@@ -19,14 +31,42 @@ api.interceptors.request.use(async (config) => {
     config.headers = config.headers ?? new AxiosHeaders();
     (config.headers as AxiosHeaders).set('Authorization', `Bearer ${token}`);
   }
+
+  const authUser = useAuthStore.getState().user;
+  const tenantContext = useTenantContextStore.getState();
+  if (
+    authUser?.role === 'SUPER_ADMIN'
+    && tenantContext.selectedForUid === authUser.uid
+    && tenantContext.selectedTenantId
+  ) {
+    config.headers.set('X-Tenant-Id', tenantContext.selectedTenantId);
+  }
+
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
-  (err: AxiosError<{ message?: string; code?: string }>) => {
+  async (err: AxiosError<{ message?: string; code?: string }>) => {
     const status = err.response?.status;
     const msg = err.response?.data?.message ?? err.message;
+
+    const request = err.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    if (status === 401 && request && !request._retry) {
+      const user = getAuth().currentUser;
+      if (user) {
+        request._retry = true;
+        try {
+          const token = await user.getIdToken(true);
+          request.headers = AxiosHeaders.from(request.headers);
+          request.headers.set('Authorization', `Bearer ${token}`);
+          return api.request(request);
+        } catch (refreshError) {
+          toast.error('Session expired. Please sign in again.');
+          return Promise.reject(refreshError);
+        }
+      }
+    }
 
     if (status === 401) {
       toast.error('Session expired. Please sign in again.');
@@ -47,3 +87,16 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Small typed facade for feature modules that need the response body directly.
+// Keep the configured Axios instance and its auth/error interceptors as the single transport.
+export const apiClient = {
+  async get<T>(url: string): Promise<T> {
+    const response = await api.get<T>(url);
+    return response.data;
+  },
+  async post<T>(url: string, body?: unknown): Promise<T> {
+    const response = await api.post<T>(url, body);
+    return response.data;
+  },
+};

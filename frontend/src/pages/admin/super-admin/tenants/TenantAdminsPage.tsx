@@ -160,7 +160,6 @@ export default function TenantAdminsPage() {
                         className="h-9 rounded-md border border-input bg-background px-2"
                       >
                         <option value="TENANT_ADMIN">Tenant admin</option>
-                        <option value="ADMIN">Admin</option>
                         <option value="MANAGER">Manager</option>
                         <option value="STAFF">Staff</option>
                       </select>

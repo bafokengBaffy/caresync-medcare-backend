@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { RoleGate } from './components/auth/RoleGate';
 import { AppLayout } from './components/layout/AppLayout';
@@ -24,7 +24,6 @@ import DentalChartsPage from './pages/clinical/DentalChartsPage';
 import EyeExamsPage from './pages/clinical/EyeExamsPage';
 import LabResultsPage from './pages/clinical/LabResultsPage';
 const AdminDashboardPage = lazy(() => import('./pages/admin/dashboard/AdminDashboardPage'));
-const AuditLogPage = lazy(() => import('./pages/admin/audit/AuditLogPage'));
 const SuperAdminDashboardPage = lazy(() => import('./pages/admin/super-admin/dashboard/SuperAdminDashboardPage'));
 const SuperAdminUserListPage = lazy(() => import('./pages/admin/super-admin/users/UserListPage'));
 const SuperAdminUserDetailPage = lazy(() => import('./pages/admin/super-admin/users/UserDetailPage'));
@@ -41,7 +40,7 @@ const SuperAdminRoleManagementPage = lazy(() => import('./pages/admin/super-admi
 const SuperAdminAuditLogPage = lazy(() => import('./pages/admin/super-admin/audit/AuditLogPage'));
 const SystemActivityPage = lazy(() => import('./pages/admin/super-admin/audit/SystemActivityPage'));
 const GlobalSettingsPage = lazy(() => import('./pages/admin/super-admin/system/GlobalSettingsPage'));
-const IntegrationsPage = lazy(() => import('./pages/admin/system/IntegrationsPage'));
+const IntegrationsPage = lazy(() => import('./pages/admin/super-admin/system/IntegrationsPage'));
 const RevenuePage = lazy(() => import('./pages/admin/super-admin/billing/RevenuePage'));
 const SubscriptionsPage = lazy(() => import('./pages/admin/super-admin/billing/SubscriptionsPage'));
 const TenantAdminDashboardPage = lazy(() => import('./pages/admin/tenant-admin/dashboard/TenantAdminDashboardPage'));
@@ -58,9 +57,6 @@ const StaffProvisioningPage = lazy(() => import('./pages/admin/tenant-admin/regi
 const TenantRoleManagementPage = lazy(() => import('./pages/admin/tenant-admin/roles/TenantRoleManagementPage'));
 const TenantSettingsPage = lazy(() => import('./pages/admin/tenant-admin/settings/TenantSettingsPage'));
 const TenantAuditLogPage = lazy(() => import('./pages/admin/tenant-admin/audit/TenantAuditLogPage'));
-const UserListPage = lazy(() => import('./pages/admin/users/UserListPage'));
-const UserDetailPage = lazy(() => import('./pages/admin/users/UserDetailPage'));
-const RoleManagementPage = lazy(() => import('./pages/admin/users/RoleManagementPage'));
 import SettingsPage from './pages/shared/SettingsPage';
 import ProfilePage from './pages/shared/ProfilePage';
 import SecurityPage from './pages/shared/SecurityPage';
@@ -77,7 +73,7 @@ import ServiceFeesPage from './pages/finance/billing/ServiceFeesPage';
 import FinancialReportsPage from './pages/finance/reports/FinancialReportsPage';
 
 const allRoles: Role[] = [...ROLES];
-const adminRoles: Role[] = ['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN'];
+const adminRoles: Role[] = ['SUPER_ADMIN', 'TENANT_ADMIN'];
 const clinicalRoles: Role[] = ['PROVIDER', 'CLINICIAN'];
 const receptionRoles: Role[] = ['RECEPTION', 'RECEPTIONIST', 'STAFF'];
 const financeRoles: Role[] = ['FINANCE', 'MANAGER'];
@@ -93,7 +89,6 @@ function RoleHomeRedirect() {
   const homeByRole: Record<Role, string> = {
     SUPER_ADMIN: '/admin/super',
     TENANT_ADMIN: '/admin/tenant',
-    ADMIN: '/admin/dashboard',
     PROVIDER: '/clinical/dashboard',
     CLINICIAN: '/clinical/dashboard',
     RECEPTION: '/reception/dashboard',
@@ -112,10 +107,22 @@ function AdminHomeRedirect() {
   const role = useAuthStore((state) => state.user?.role);
   const home = role === 'SUPER_ADMIN'
     ? '/admin/super'
-    : role === 'TENANT_ADMIN'
-      ? '/admin/tenant'
-      : '/admin/dashboard';
+    : role === 'TENANT_ADMIN' ? '/admin/tenant' : '/unauthorized';
   return <Navigate to={home} replace />;
+}
+
+function LegacyAdminSectionRedirect({ section }: { section: 'audit' | 'roles' }) {
+  const role = useAuthStore((state) => state.user?.role);
+  if (role === 'SUPER_ADMIN') return <Navigate to={`/admin/super/${section}`} replace />;
+  if (role === 'TENANT_ADMIN') return <Navigate to={`/admin/tenant/${section}`} replace />;
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function LegacyAdminUsersRedirect() {
+  const role = useAuthStore((state) => state.user?.role);
+  const { userId } = useParams();
+  const target = role === 'SUPER_ADMIN' ? '/admin/super/users' : role === 'TENANT_ADMIN' ? '/admin/tenant/users' : '/unauthorized';
+  return <Navigate to={userId ? `${target}/${encodeURIComponent(userId)}` : target} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -157,11 +164,11 @@ export const router = createBrowserRouter([
         element: guard(adminRoles, <Outlet />),
         children: [
           { index: true, element: <AdminHomeRedirect /> },
-          { path: 'dashboard', element: guard(['ADMIN'], <AdminDashboardPage />) },
-          { path: 'audit', element: guard(['ADMIN'], <AuditLogPage />) },
-          { path: 'users', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN'], <UserListPage />) },
-          { path: 'users/:userId', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN'], <UserDetailPage />) },
-          { path: 'roles', element: guard(['ADMIN'], <RoleManagementPage />) },
+          { path: 'dashboard', element: <AdminHomeRedirect /> },
+          { path: 'audit', element: <LegacyAdminSectionRedirect section="audit" /> },
+          { path: 'users', element: <LegacyAdminUsersRedirect /> },
+          { path: 'users/:userId', element: <LegacyAdminUsersRedirect /> },
+          { path: 'roles', element: <LegacyAdminSectionRedirect section="roles" /> },
           { path: 'super', element: guard(['SUPER_ADMIN'], <SuperAdminDashboardPage />) },
           { path: 'super/dashboard', element: guard(['SUPER_ADMIN'], <SuperAdminDashboardPage />) },
           { path: 'super/health', element: guard(['SUPER_ADMIN'], <AdminDashboardPage platformMode />) },
@@ -259,7 +266,7 @@ export const router = createBrowserRouter([
           { path: 'profile', element: <ProfilePage /> },
           { path: 'security', element: guard(allRoles.filter((role) => role !== 'PATIENT'), <SecurityPage />) },
           { path: 'notifications', element: guard(allRoles.filter((role) => role !== 'PATIENT'), <NotificationsPage />) },
-          { path: 'compliance', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN', 'ADMIN', 'CONSENT_MANAGER', 'PRIVACY_OFFICER'], <CompliancePage />) },
+          { path: 'compliance', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN', 'CONSENT_MANAGER', 'PRIVACY_OFFICER'], <CompliancePage />) },
           { path: 'api-keys', element: guard(['SUPER_ADMIN', 'TENANT_ADMIN'], <ApiKeysPage />) },
         ],
       },

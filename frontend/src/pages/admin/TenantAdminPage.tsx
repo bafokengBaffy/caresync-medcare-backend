@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { errorMessage } from '@/lib/error-message';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2,
@@ -69,8 +70,8 @@ const TenantAdminPage = () => {
       const data = await response.json();
       setTenants(data.content || []);
       setTotalPages(data.totalPages || 0);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching tenants');
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'An error occurred while fetching tenants'));
     } finally {
       setIsLoading(false);
     }
@@ -99,8 +100,8 @@ const TenantAdminPage = () => {
       toast.success('Tenant deleted successfully');
       setIsDeleteModalOpen(false);
       fetchTenants();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to delete tenant');
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, 'Failed to delete tenant'));
     } finally {
       setIsActionLoading(false);
       setTenantToDelete(null);
@@ -181,7 +182,7 @@ const TenantAdminPage = () => {
         <select
           value={statusFilter}
           onChange={(e) => {
-            setStatusFilter(e.target.value as any);
+            setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED');
             setPage(0);
           }}
           className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"

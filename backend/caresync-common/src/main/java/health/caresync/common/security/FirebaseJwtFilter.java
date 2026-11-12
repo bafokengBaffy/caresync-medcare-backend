@@ -23,7 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class FirebaseJwtFilter extends OncePerRequestFilter {
     private static final Set<String> ALLOWED_ROLES = Set.of(
-        "ADMIN", "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
+        "PROVIDER", "STAFF", "RECEPTION", "FINANCE", "MANAGER",
         "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER", "RECEPTIONIST",
         "SUPER_ADMIN", "TENANT_ADMIN", "PATIENT"
     );

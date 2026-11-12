@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AdminRoleService {
     private static final Set<String> ROLES = Set.of(
-        "SUPER_ADMIN", "TENANT_ADMIN", "ADMIN", "PROVIDER", "STAFF", "RECEPTION",
+        "SUPER_ADMIN", "TENANT_ADMIN", "PROVIDER", "STAFF", "RECEPTION",
         "FINANCE", "MANAGER", "CONSENT_MANAGER", "CLINICIAN", "PRIVACY_OFFICER",
         "RECEPTIONIST", "PATIENT"
     );
@@ -90,16 +90,11 @@ public class AdminRoleService {
         Map<String, Boolean> permissions = new TreeMap<>();
         PERMISSIONS.forEach(permission -> permissions.put(permission, false));
         if ("SUPER_ADMIN".equals(role)) {
-            PERMISSIONS.forEach(permission -> permissions.put(permission, true));
-        } else if ("TENANT_ADMIN".equals(role) || "ADMIN".equals(role)) {
-            permissions.put("PATIENT_READ", true);
-            permissions.put("PATIENT_WRITE", true);
-            permissions.put("BILLING_READ", true);
-            permissions.put("BILLING_WRITE", true);
-            permissions.put("APPOINTMENT_READ", true);
-            permissions.put("APPOINTMENT_WRITE", true);
-            permissions.put("CLINICAL_NOTE_READ", true);
-            permissions.put("CLINICAL_NOTE_WRITE", true);
+            permissions.put("USER_MANAGE", true);
+            permissions.put("TENANT_MANAGE", true);
+            permissions.put("AUDIT_READ", true);
+            permissions.put("SETTINGS_MANAGE", true);
+        } else if ("TENANT_ADMIN".equals(role)) {
             permissions.put("USER_MANAGE", true);
             permissions.put("AUDIT_READ", true);
             permissions.put("SETTINGS_MANAGE", true);
@@ -127,7 +122,6 @@ public class AdminRoleService {
         return switch (role) {
             case "SUPER_ADMIN" -> "Platform-wide administration";
             case "TENANT_ADMIN" -> "Administration for a single tenant";
-            case "ADMIN" -> "Administrative access within a tenant";
             case "PROVIDER", "CLINICIAN" -> "Clinical care and documentation";
             case "FINANCE" -> "Billing and finance operations";
             case "RECEPTION", "RECEPTIONIST" -> "Front-desk and appointment operations";

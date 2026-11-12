@@ -30,6 +30,8 @@ import {
   MailWarning,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizePage } from '@/lib/pagination';
+import api from '@/lib/api-client';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -64,6 +66,10 @@ interface ListResponse {
   totalPages: number;
 }
 
+interface ApiEnvelope<T> {
+  data: T;
+}
+
 const PAGE_SIZE = 15;
 
 const STATUS_STYLES: Record<RequestStatus, string> = {
@@ -77,11 +83,6 @@ const SOURCE_LABELS: Record<RequestSource, string> = {
   INVITE: 'Admin invite',
   API: 'API',
 };
-
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${localStorage.getItem('firebaseToken') ?? ''}`,
-});
 
 // ─────────────────────────────────────────────────────────────
 // Component
@@ -138,16 +139,16 @@ export default function RegistrationRequestsPage() {
         });
         if (debouncedSearch) params.set('search', debouncedSearch);
         if (statusFilter !== 'ALL') params.set('status', statusFilter);
-        const res = await fetch(
-          `/api/v1/admin/registration/requests?${params.toString()}`,
-          { headers: authHeaders() }
+        const result = (await api.get<ApiEnvelope<ListResponse> | ListResponse>(
+          '/api/v1/admin/registration/requests',
+          { params },
+        )).data;
+        const data = normalizePage<RegistrationRequest>(
+          'data' in result ? result.data : result,
         );
-        if (!res.ok) throw new Error('Failed to load registration requests');
-        const result = await res.json();
-        const data: ListResponse & { page?: number; size?: number; total?: number } = result.data ?? result;
-        setRequests(data.content ?? []);
-        setTotalPages(data.totalPages ?? Math.ceil((data.total ?? 0) / (data.size || PAGE_SIZE)));
-        setTotalElements(data.totalElements ?? data.total ?? 0);
+        setRequests(data.content);
+        setTotalPages(data.totalPages ?? 0);
+        setTotalElements(data.total);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unknown error');
       } finally {
@@ -193,15 +194,10 @@ export default function RegistrationRequestsPage() {
     }
     setIsActing(true);
     try {
-      const res = await fetch(
+      await api.post(
         `/api/v1/admin/registration/requests/${actionTarget.id}/approve`,
-        {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ tenantId: approvalTenantId, patientId: approvalPatientId }),
-        }
+        { tenantId: approvalTenantId, patientId: approvalPatientId },
       );
-      if (!res.ok) throw new Error('Approval failed');
       toast.success(`Approved ${actionTarget.email}`);
       closeAction();
       load({ silent: true });
@@ -221,15 +217,10 @@ export default function RegistrationRequestsPage() {
     }
     setIsActing(true);
     try {
-      const res = await fetch(
+      await api.post(
         `/api/v1/admin/registration/requests/${actionTarget.id}/reject`,
-        {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ reason: rejectionReason.trim() }),
-        }
+        { reason: rejectionReason.trim() },
       );
-      if (!res.ok) throw new Error('Rejection failed');
       toast.success(`Rejected ${actionTarget.email}`);
       closeAction();
       load({ silent: true });
@@ -290,24 +281,24 @@ export default function RegistrationRequestsPage() {
     if (provider === 'microsoft.com')
       return <span className="text-xs font-bold text-blue-600">M</span>;
     if (provider === 'apple.com')
-      return <span className="text-xs font-bold text-gray-800"></span>;
-    return <Mail className="w-3.5 h-3.5 text-gray-500" />;
+      return <span className="text-xs font-bold text-gray-800 dark:text-slate-100"></span>;
+    return <Mail className="w-3.5 h-3.5 text-gray-500 dark:text-slate-400" />;
   };
 
   // ───────────────────────────────────────────────
   // Render
   // ───────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-6">
+      <div className="bg-white border-b border-gray-200 px-6 py-6 dark:bg-slate-900 dark:border-slate-700">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 dark:text-slate-50">
               <Inbox className="w-6 h-6 text-indigo-600" />
               Registration Requests
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               Review self-registered Firebase accounts awaiting role and tenant assignment.
             </p>
           </div>
@@ -315,7 +306,7 @@ export default function RegistrationRequestsPage() {
             <button
               onClick={() => load({ silent: true })}
               disabled={isRefreshing}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-900 dark:hover:bg-slate-950"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -323,7 +314,7 @@ export default function RegistrationRequestsPage() {
             <button
               onClick={exportCsv}
               disabled={requests.length === 0}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-900 dark:hover:bg-slate-950"
             >
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -342,13 +333,13 @@ export default function RegistrationRequestsPage() {
       {/* Toolbar */}
       <div className="max-w-7xl mx-auto w-full px-6 py-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-300" />
           <input
             type="text"
             placeholder="Search by email, name, or Firebase UID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900"
           />
         </div>
         <select
@@ -357,7 +348,7 @@ export default function RegistrationRequestsPage() {
             setStatusFilter(e.target.value as 'ALL' | RequestStatus);
             setPage(0);
           }}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:ring-indigo-500 focus:border-indigo-500"
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900"
         >
           <option value="ALL">All statuses</option>
           <option value="PENDING">Pending</option>
@@ -366,11 +357,7 @@ export default function RegistrationRequestsPage() {
         </select>
         <button
           onClick={() => setIsFilterOpen((v) => !v)}
-          className={`inline-flex items-center px-4 py-2 border rounded-md text-sm font-medium transition-colors ${
-            isFilterOpen
-              ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
+          className={`inline-flex items-center px-4 py-2 border rounded-md text-sm font-medium transition-colors ${ isFilterOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-slate-950' } dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-950`}
         >
           <Filter className="w-4 h-4 mr-2" />
           Filters
@@ -380,8 +367,8 @@ export default function RegistrationRequestsPage() {
       {/* Advanced filters */}
       {isFilterOpen && (
         <div className="max-w-7xl mx-auto w-full px-6 pb-4">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">Search and status are supported by the registration API.</p>
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 dark:bg-slate-900 dark:border-slate-700">
+            <p className="text-sm text-gray-600 dark:text-slate-300">Search and status are supported by the registration API.</p>
             <div className="flex items-end">
               <button onClick={() => setIsFilterOpen(false)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
                 Close
@@ -393,16 +380,16 @@ export default function RegistrationRequestsPage() {
 
       {/* Table */}
       <div className="max-w-7xl mx-auto w-full px-6 pb-12 flex-1">
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-700">
           {isLoading ? (
-            <div className="p-16 flex flex-col items-center text-gray-500">
+            <div className="p-16 flex flex-col items-center text-gray-500 dark:text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
               <p className="text-sm">Loading requests...</p>
             </div>
           ) : error ? (
             <div className="p-16 text-center">
               <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-              <p className="text-sm text-gray-700">{error}</p>
+              <p className="text-sm text-gray-700 dark:text-slate-200">{error}</p>
               <button
                 onClick={() => load()}
                 className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
@@ -413,9 +400,9 @@ export default function RegistrationRequestsPage() {
             </div>
           ) : requests.length === 0 ? (
             <div className="p-16 text-center">
-              <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-gray-900">No requests found</h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-3 dark:text-slate-300" />
+              <h3 className="text-base font-semibold text-gray-900 dark:text-slate-50">No requests found</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                 {statusFilter === 'PENDING'
                   ? 'No pending registration requests right now.'
                   : 'Try adjusting your filters.'}
@@ -423,8 +410,8 @@ export default function RegistrationRequestsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-950">
                   <tr>
                     {[
                       'Applicant',
@@ -437,26 +424,26 @@ export default function RegistrationRequestsPage() {
                     ].map((h, i) => (
                       <th
                         key={i}
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-slate-400"
                       >
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200 dark:bg-slate-900 dark:divide-slate-700">
                   {requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={req.id} className="hover:bg-gray-50 transition-colors dark:hover:bg-slate-950">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm flex-shrink-0">
                             {(req.displayName ?? req.email).charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-gray-900 truncate dark:text-slate-50">
                               {req.displayName ?? 'Unknown name'}
                             </p>
-                            <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                            <p className="text-xs text-gray-500 truncate flex items-center gap-1 dark:text-slate-400">
                               <Mail className="w-3 h-3" />
                               {req.email}
                             </p>
@@ -465,7 +452,7 @@ export default function RegistrationRequestsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-gray-100">
+                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-gray-100 dark:bg-slate-900">
                             <ProviderIcon provider={req.authProvider} />
                           </span>
                           {req.emailVerified === true ? (
@@ -477,7 +464,7 @@ export default function RegistrationRequestsPage() {
                               <MailWarning className="w-3 h-3" /> Unverified
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                            <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                               <Info className="w-3 h-3" /> Not recorded
                             </span>
                           )}
@@ -486,22 +473,22 @@ export default function RegistrationRequestsPage() {
                       <td className="px-4 py-3">
                         <div className="text-xs space-y-0.5">
                           {req.requestedRole ? (
-                            <p className="flex items-center gap-1 text-gray-700">
-                              <Shield className="w-3 h-3 text-gray-400" />
+                            <p className="flex items-center gap-1 text-gray-700 dark:text-slate-200">
+                              <Shield className="w-3 h-3 text-gray-400 dark:text-slate-300" />
                               {req.requestedRole.replace(/_/g, ' ')}
                             </p>
                           ) : (
-                            <p className="text-gray-400 italic">No role requested</p>
+                            <p className="text-gray-400 italic dark:text-slate-300">No role requested</p>
                           )}
                           {(req.requestedTenantName || req.requestedTenantId) && (
-                            <p className="flex items-center gap-1 text-gray-500">
-                              <Building2 className="w-3 h-3 text-gray-400" />
+                            <p className="flex items-center gap-1 text-gray-500 dark:text-slate-400">
+                              <Building2 className="w-3 h-3 text-gray-400 dark:text-slate-300" />
                               {req.requestedTenantName ?? req.requestedTenantId}
                             </p>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-600">
+                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-slate-300">
                         {req.source ? SOURCE_LABELS[req.source] : 'Not recorded'}
                       </td>
                       <td className="px-4 py-3">
@@ -514,14 +501,14 @@ export default function RegistrationRequestsPage() {
                           {req.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap dark:text-slate-400">
                         {new Date(req.submittedAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => setSelected(req)}
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 dark:hover:bg-slate-900 dark:text-slate-400"
                             title="View details"
                           >
                             <Eye className="w-4 h-4" />
@@ -556,17 +543,17 @@ export default function RegistrationRequestsPage() {
 
         {/* Pagination */}
         {!isLoading && !error && requests.length > 0 && (
-          <div className="mt-4 bg-white px-4 py-3 flex items-center justify-between rounded-lg shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-700">
+          <div className="mt-4 bg-white px-4 py-3 flex items-center justify-between rounded-lg shadow-sm border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
+            <p className="text-sm text-gray-700 dark:text-slate-200">
               Page <span className="font-semibold">{page + 1}</span> of{' '}
               <span className="font-semibold">{totalPages || 1}</span>
-              <span className="ml-2 text-gray-500">({totalElements} total)</span>
+              <span className="ml-2 text-gray-500 dark:text-slate-400">({totalElements} total)</span>
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-900 dark:hover:bg-slate-950"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 Previous
@@ -574,7 +561,7 @@ export default function RegistrationRequestsPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-900 dark:hover:bg-slate-950"
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -587,8 +574,8 @@ export default function RegistrationRequestsPage() {
       {/* ── Details drawer ── */}
       {selected && (
         <div className="fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-gray-900/50" onClick={() => setSelected(null)} />
-          <aside className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl overflow-y-auto animate-in slide-in-from-right">
+          <div className="absolute inset-0 bg-gray-900/50 dark:bg-slate-100/50" onClick={() => setSelected(null)} />
+          <aside className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl overflow-y-auto animate-in slide-in-from-right dark:bg-slate-900">
             <div className="sticky top-0 bg-indigo-700 text-white px-5 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold">Request Details</h2>
@@ -596,17 +583,17 @@ export default function RegistrationRequestsPage() {
               </div>
               <button
                 onClick={() => setSelected(null)}
-                className="p-1.5 rounded hover:bg-white/10"
+                className="p-1.5 rounded hover:bg-white dark:hover:bg-slate-900"
               >
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
             <div className="p-5 space-y-5">
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">
                   Applicant
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm dark:bg-slate-950">
                   <Row icon={User} label="Name" value={selected.displayName ?? '—'} />
                   <Row icon={Mail} label="Email" value={selected.email} />
                   <Row
@@ -647,10 +634,10 @@ export default function RegistrationRequestsPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">
                   Requested Access
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm dark:bg-slate-950">
                   <Row
                     icon={Shield}
                     label="Role"
@@ -673,10 +660,10 @@ export default function RegistrationRequestsPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">
                   Submission
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm dark:bg-slate-950">
                   <Row
                     icon={Calendar}
                     label="Submitted"
@@ -704,20 +691,20 @@ export default function RegistrationRequestsPage() {
               </div>
               {selected.notes && (
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 dark:text-slate-400">
                     Notes
                   </h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 dark:text-slate-200 dark:bg-slate-950">
                     {selected.notes}
                   </p>
                 </div>
               )}
             </div>
             {selected.status === 'PENDING' && (
-              <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-2">
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-2 dark:bg-slate-900 dark:border-slate-700">
                 <button
                   onClick={() => openReject(selected)}
-                  className="flex-1 inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50"
+                  className="flex-1 inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50 dark:bg-slate-900"
                 >
                   <Ban className="w-4 h-4" />
                   Reject
@@ -738,15 +725,15 @@ export default function RegistrationRequestsPage() {
       {/* ── Approve modal ── */}
       {actionKind === 'APPROVE' && actionTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60" onClick={closeAction} />
-          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="absolute inset-0 bg-gray-900/60 dark:bg-slate-100/60" onClick={closeAction} />
+          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6 dark:bg-slate-900">
             <div className="flex items-start gap-4">
               <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Approve request?</h3>
-                <p className="mt-1 text-sm text-gray-600">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50">Approve request?</h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
                   The Firebase account <strong>{actionTarget.email}</strong> will be linked to
                   an existing patient record in the selected tenant.
                 </p>
@@ -759,24 +746,24 @@ export default function RegistrationRequestsPage() {
               </div>
             </div>
             <div className="mt-5 space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 Tenant ID
                 <input
                   required
                   value={approvalTenantId}
                   onChange={(event) => setApprovalTenantId(event.target.value)}
                   placeholder="Tenant UUID"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600"
                 />
               </label>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 Existing patient ID
                 <input
                   required
                   value={approvalPatientId}
                   onChange={(event) => setApprovalPatientId(event.target.value)}
                   placeholder="Patient UUID"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600"
                 />
               </label>
             </div>
@@ -784,7 +771,7 @@ export default function RegistrationRequestsPage() {
               <button
                 onClick={closeAction}
                 disabled={isActing}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
               >
                 Cancel
               </button>
@@ -804,19 +791,19 @@ export default function RegistrationRequestsPage() {
       {/* ── Reject modal ── */}
       {actionKind === 'REJECT' && actionTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60" onClick={closeAction} />
-          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="absolute inset-0 bg-gray-900/60 dark:bg-slate-100/60" onClick={closeAction} />
+          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6 dark:bg-slate-900">
             <div className="flex items-start gap-4">
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                 <Ban className="w-6 h-6 text-red-600" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">Reject request</h3>
-                <p className="mt-1 text-sm text-gray-600">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-50">Reject request</h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
                   Rejecting <strong>{actionTarget.email}</strong> prevents this account from
                   being provisioned. The reason will be stored and visible to admins.
                 </p>
-                <label className="block mt-4 text-sm font-medium text-gray-700 mb-1">
+                <label className="block mt-4 text-sm font-medium text-gray-700 mb-1 dark:text-slate-200">
                   Reason for rejection <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -824,7 +811,7 @@ export default function RegistrationRequestsPage() {
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="e.g. Could not verify employment with this organisation."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                 />
               </div>
             </div>
@@ -832,7 +819,7 @@ export default function RegistrationRequestsPage() {
               <button
                 onClick={closeAction}
                 disabled={isActing}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
               >
                 Cancel
               </button>
@@ -875,12 +862,12 @@ function Row({
       ? 'text-amber-700'
       : tone === 'danger'
       ? 'text-red-700'
-      : 'text-gray-900';
+      : 'text-gray-900 dark:text-slate-50';
   return (
     <div className="flex items-start gap-2">
-      <Icon className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+      <Icon className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0 dark:text-slate-300" />
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-gray-500 uppercase tracking-wide">{label}</p>
+        <p className="text-[11px] text-gray-500 uppercase tracking-wide dark:text-slate-400">{label}</p>
         <p
           className={`text-sm break-all ${toneCls} ${mono ? 'font-mono text-xs' : ''}`}
         >

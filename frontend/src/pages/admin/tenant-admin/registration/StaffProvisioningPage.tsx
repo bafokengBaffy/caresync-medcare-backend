@@ -1,10 +1,5 @@
-const StaffProvisioningPage = () => {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900"><StaffProvisioningPage /></h1>
-      <p className="mt-2 text-sm text-gray-500">TODO: implement</p>
-    </div>
-  );
-};
+import TenantUserCreatePage from '../users/TenantUserCreatePage';
 
-export default StaffProvisioningPage;
+export default function StaffProvisioningPage() {
+  return <TenantUserCreatePage />;
+}

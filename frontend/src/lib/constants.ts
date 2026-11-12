@@ -16,7 +16,6 @@ export const ROLES = [
   'SUPER_ADMIN',
   'TENANT_ADMIN',
   'PATIENT',
-  'ADMIN',
   'PROVIDER',
   'STAFF',
   'RECEPTION',

@@ -11,6 +11,9 @@ public record AuditLogResponse(
     String action,
     String resourceType,
     String resourceId,
+    String delta,
+    String ipAddress,
+    String userAgent,
     String requestId,
     Instant createdAt
 ) { }

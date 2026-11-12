@@ -30,12 +30,13 @@ public class AdminAuditController {
         @RequestParam(required = false) UUID tenantId,
         @RequestParam(required = false) String action,
         @RequestParam(required = false) String userId,
+        @RequestParam(required = false) String resourceType,
         @RequestParam(required = false) String search,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "25") int size
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-            auditService.list(actor, tenantId, action, userId, search, page, size)
+            auditService.list(actor, tenantId, action, userId, resourceType, search, page, size)
         ));
     }
 }

@@ -25,13 +25,19 @@ public class PermissionAspect {
     private static final Logger log = LoggerFactory.getLogger(PermissionAspect.class);
 
     // Shared Role-to-Permission mapping (Should ideally be externalized to Redis/DB)
-    private static final Map<String, List<String>> ROLE_PERMISSIONS = Map.of(
-        "SUPER_ADMIN", List.of("*"),
-        "TENANT_ADMIN", List.of("patients:read", "patients:write", "billing:read", "billing:write", "admin:read"),
-        "DOCTOR", List.of("patients:read", "clinical:read", "clinical:write", "notes:read", "notes:write"),
-        "NURSE", List.of("patients:read", "clinical:read", "nursing:write", "notes:read"),
-        "RECEPTIONIST", List.of("patients:read", "patients:create", "appointments:read", "appointments:write", "billing:create"),
-        "FINANCE_OFFICER", List.of("billing:read", "billing:write", "invoices:read", "payments:read")
+    private static final Map<String, List<String>> ROLE_PERMISSIONS = Map.ofEntries(
+        Map.entry("SUPER_ADMIN", List.of("admin:read", "admin:write", "audit:read", "settings:manage", "integrations:manage", "users:manage", "tenants:manage")),
+        Map.entry("TENANT_ADMIN", List.of("admin:read", "admin:write", "audit:read", "settings:manage", "users:manage")),
+        Map.entry("PROVIDER", List.of("patients:read", "patients:write", "providers:read", "appointments:read", "appointments:write", "notes:read", "notes:write")),
+        Map.entry("CLINICIAN", List.of("patients:read", "patients:write", "appointments:read", "appointments:write", "notes:read", "notes:write")),
+        Map.entry("STAFF", List.of()),
+        Map.entry("RECEPTION", List.of("patients:read", "patients:write", "appointments:read", "appointments:write", "billing:read", "billing:write")),
+        Map.entry("RECEPTIONIST", List.of("patients:read", "patients:write", "appointments:read", "appointments:write", "billing:read", "billing:write")),
+        Map.entry("FINANCE", List.of("billing:read", "billing:write")),
+        Map.entry("MANAGER", List.of("appointments:read")),
+        Map.entry("CONSENT_MANAGER", List.of("consents:read", "consents:write")),
+        Map.entry("PRIVACY_OFFICER", List.of("audit:read", "consents:read")),
+        Map.entry("PATIENT", List.of())
     );
 
     @Before("@annotation(requirePermission)")
@@ -47,10 +53,6 @@ public class PermissionAspect {
         
         if (permissions == null) {
             throw new ForbiddenException("Access Denied: Role '" + role + "' is not recognized.");
-        }
-
-        if (permissions.contains("*")) {
-            return; // Super Admin bypass
         }
 
         if (!permissions.contains(requiredPermission)) {

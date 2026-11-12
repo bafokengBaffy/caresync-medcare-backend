@@ -2,7 +2,6 @@ package health.caresync.common.constants;
 
 public final class DomainConstants {
     private DomainConstants() {}
-    public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
     public static final String ROLE_TENANT_ADMIN = "TENANT_ADMIN";
     public static final String ROLE_PROVIDER = "PROVIDER";

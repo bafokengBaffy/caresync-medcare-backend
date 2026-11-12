@@ -26,7 +26,7 @@ public class TenantRoutingService {
 
     /** Roles permitted to route cross-tenant (platform operators). */
     private static final Set<String> CROSS_TENANT_ROLES =
-            Set.of("SUPER_ADMIN", "SYSTEM_ADMIN");
+            Set.of("SUPER_ADMIN");
 
     /** Headers that clients must never be able to override for tenant context. */
     public static final String TRUSTED_TENANT_HEADER = "X-Tenant-Id";

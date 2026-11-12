@@ -51,6 +51,14 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.ok(adminUserService.lookupFirebaseAccount(email)));
     }
 
+    @GetMapping("/legacy-admin-review")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<AdminUserService.LegacyAdminRoleReview>>> legacyAdminReview(
+        @AuthenticationPrincipal CaresyncPrincipal actor
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(adminUserService.legacyAdminRoleReviews(actor)));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<AdminUserResponse>>> list(
         @AuthenticationPrincipal CaresyncPrincipal actor,

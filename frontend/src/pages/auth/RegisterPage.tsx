@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import { FirebaseError } from 'firebase/app';
 import {
   ArrowRight,
   Check,
@@ -18,7 +17,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { Link, useNavigate } from 'react-router-dom';
-import { auth } from '@/lib/firebase';
+import { auth, getFirebaseAuthErrorCode } from '@/lib/firebase';
 
 const requirements = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -29,12 +28,13 @@ const requirements = [
 ];
 
 function registrationError(error: unknown): string {
-  if (!(error instanceof FirebaseError)) return 'We could not create your account. Please try again.';
-  if (error.code === 'auth/email-already-in-use') return 'An account with this email already exists. Try signing in instead.';
-  if (error.code === 'auth/weak-password') return 'Choose a stronger password and try again.';
-  if (error.code === 'auth/invalid-email') return 'Enter a valid email address.';
-  if (error.code === 'auth/popup-closed-by-user') return 'The Google sign-up window was closed before completion.';
-  if (error.code === 'auth/operation-not-allowed') return 'This sign-up method is not enabled. Contact your administrator.';
+  const code = getFirebaseAuthErrorCode(error);
+  if (!code) return 'We could not create your account. Please try again.';
+  if (code === 'auth/email-already-in-use') return 'An account with this email already exists. Try signing in instead.';
+  if (code === 'auth/weak-password') return 'Choose a stronger password and try again.';
+  if (code === 'auth/invalid-email') return 'Enter a valid email address.';
+  if (code === 'auth/popup-closed-by-user') return 'The Google sign-up window was closed before completion.';
+  if (code === 'auth/operation-not-allowed') return 'This sign-up method is not enabled. Contact your administrator.';
   return 'We could not create your account. Please try again.';
 }
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { initials } from '@/lib/utils';
 import { useUiStore } from '@/stores/ui-store';
 import { translate, type TranslationKey } from '@/lib/i18n';
+import { TenantContextSelector } from './TenantContextSelector';
 
 export function Topbar() {
   const { user, logout } = useAuth();
@@ -17,6 +18,7 @@ export function Topbar() {
   const onLogout = async () => { await logout(); navigate('/auth/login'); };
   return (
     <header className="relative z-30 flex h-16 shrink-0 items-center justify-end gap-3 border-b bg-background/95 px-6 backdrop-blur">
+      <TenantContextSelector />
       <div className="flex items-center gap-3">
         <label className="sr-only" htmlFor="display-language">{t('action.language')}</label>
         <select
@@ -58,7 +60,7 @@ export function Topbar() {
           <div className="font-medium">{profile?.fullName || user?.displayName || user?.email}</div>
           <div className="text-xs text-muted-foreground">{user?.role ?? 'USER'}</div>
         </div>
-        <Button variant="ghost" size="icon" aria-label={t('action.profile')} title={t('action.profile')} onClick={() => navigate('/settings/profile')}><User className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label={t('action.profile')} title={t('action.profile')} onClick={() => navigate('/shared/profile')}><User className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" aria-label={t('action.signOut')} title={t('action.signOut')} onClick={onLogout}><LogOut className="h-4 w-4" /></Button>
       </div>
     </header>

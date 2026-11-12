@@ -18,6 +18,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { errorMessage } from '@/lib/error-message';
 
 interface TenantDetail {
   id: string;
@@ -58,8 +59,8 @@ const TenantDetailPage = () => {
         if (!response.ok) throw new Error('Tenant not found');
         const data = await response.json();
         setTenant(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(errorMessage(err, 'Could not load tenant details.'));
       } finally {
         setIsLoading(false);
       }
@@ -87,16 +88,16 @@ const TenantDetailPage = () => {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
-  if (error || !tenant) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-red-500"><AlertTriangle className="w-12 h-12 mb-4" /><p>{error || 'Tenant not found'}</p><button onClick={() => navigate(-1)} className="mt-4 text-indigo-600 hover:underline">Go Back</button></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
+  if (error || !tenant) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-red-500 dark:bg-slate-950"><AlertTriangle className="w-12 h-12 mb-4" /><p>{error || 'Tenant not found'}</p><button onClick={() => navigate(-1)} className="mt-4 text-indigo-600 hover:underline">Go Back</button></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <div className="min-h-screen bg-gray-50 pb-12 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-6 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 px-6 py-6 sticky top-0 z-10 dark:bg-slate-900 dark:border-slate-700">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/admin/tenants')} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+            <button onClick={() => navigate('/admin/tenants')} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 dark:hover:bg-slate-900 dark:text-slate-400">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-4">
@@ -104,7 +105,7 @@ const TenantDetailPage = () => {
                 <Building2 className="w-6 h-6 text-indigo-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3 dark:text-slate-50">
                   {tenant.name}
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                     tenant.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
@@ -112,18 +113,16 @@ const TenantDetailPage = () => {
                     {tenant.status}
                   </span>
                 </h1>
-                <p className="text-sm text-gray-500">{tenant.subdomain}.caresync.com</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">{tenant.subdomain}.caresync.com</p>
               </div>
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={toggleStatus} disabled={isUpdating} className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
-              tenant.status === 'ACTIVE' ? 'border-red-300 text-red-700 bg-white hover:bg-red-50' : 'border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-50'
-            }`}>
+            <button onClick={toggleStatus} disabled={isUpdating} className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${ tenant.status === 'ACTIVE' ? 'border-red-300 text-red-700 bg-white hover:bg-red-50' : 'border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-50' } dark:bg-slate-900 dark:bg-slate-900`}>
               {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
               {tenant.status === 'ACTIVE' ? 'Suspend Tenant' : 'Activate Tenant'}
             </button>
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-900 dark:hover:bg-slate-950">
               <Settings className="w-4 h-4 mr-2" /> Edit Settings
             </button>
           </div>
@@ -134,55 +133,55 @@ const TenantDetailPage = () => {
         
         {/* Top Stats Cards */}
         <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-500">Total Users</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Users</h3>
               <Users className="w-5 h-5 text-blue-500" />
             </div>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold text-gray-900">{tenant.stats.totalUsers}</p>
-              <span className="text-sm text-gray-500">/ {tenant.limits.maxUsers}</span>
+              <p className="text-3xl font-bold text-gray-900 dark:text-slate-50">{tenant.stats.totalUsers}</p>
+              <span className="text-sm text-gray-500 dark:text-slate-400">/ {tenant.limits.maxUsers}</span>
             </div>
-            <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+            <div className="mt-4 w-full bg-gray-200 rounded-full h-2 dark:bg-slate-800">
               <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(tenant.stats.totalUsers / tenant.limits.maxUsers) * 100}%` }}></div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-500">Total Patients</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Patients</h3>
               <Activity className="w-5 h-5 text-emerald-500" />
             </div>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold text-gray-900">{tenant.stats.totalPatients}</p>
-              <span className="text-sm text-gray-500">/ {tenant.limits.maxPatients}</span>
+              <p className="text-3xl font-bold text-gray-900 dark:text-slate-50">{tenant.stats.totalPatients}</p>
+              <span className="text-sm text-gray-500 dark:text-slate-400">/ {tenant.limits.maxPatients}</span>
             </div>
-            <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+            <div className="mt-4 w-full bg-gray-200 rounded-full h-2 dark:bg-slate-800">
               <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${(tenant.stats.totalPatients / tenant.limits.maxPatients) * 100}%` }}></div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-500">Monthly Appts</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Monthly Appts</h3>
               <Calendar className="w-5 h-5 text-purple-500" />
             </div>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold text-gray-900">{tenant.stats.monthlyAppointments}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-slate-50">{tenant.stats.monthlyAppointments}</p>
             </div>
             <p className="mt-4 text-xs text-emerald-600 flex items-center gap-1"><Activity className="w-3 h-3" /> +12% from last month</p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-500">Storage Used</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Storage Used</h3>
               <Zap className="w-5 h-5 text-amber-500" />
             </div>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold text-gray-900">{tenant.stats.storageUsedMB} MB</p>
-              <span className="text-sm text-gray-500">/ {tenant.limits.storageLimitMB} MB</span>
+              <p className="text-3xl font-bold text-gray-900 dark:text-slate-50">{tenant.stats.storageUsedMB} MB</p>
+              <span className="text-sm text-gray-500 dark:text-slate-400">/ {tenant.limits.storageLimitMB} MB</span>
             </div>
-            <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+            <div className="mt-4 w-full bg-gray-200 rounded-full h-2 dark:bg-slate-800">
               <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${(tenant.stats.storageUsedMB / tenant.limits.storageLimitMB) * 100}%` }}></div>
             </div>
           </div>
@@ -190,26 +189,23 @@ const TenantDetailPage = () => {
 
         {/* Left Column - Info */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2 dark:text-slate-50">
               <FileText className="w-5 h-5 text-indigo-500" /> Tenant Information
             </h2>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
-                <dt className="text-sm font-medium text-gray-500">Owner Email</dt>
-                <dd className="mt-1 flex items-center gap-2 text-sm text-gray-900"><Mail className="w-4 h-4 text-gray-400" />{tenant.ownerEmail}</dd>
+                <dt className="text-sm font-medium text-gray-500 dark:text-slate-400">Owner Email</dt>
+                <dd className="mt-1 flex items-center gap-2 text-sm text-gray-900 dark:text-slate-50"><Mail className="w-4 h-4 text-gray-400 dark:text-slate-300" />{tenant.ownerEmail}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">Created Date</dt>
-                <dd className="mt-1 flex items-center gap-2 text-sm text-gray-900"><Calendar className="w-4 h-4 text-gray-400" />{format(new Date(tenant.createdAt), 'MMMM d, yyyy')}</dd>
+                <dt className="text-sm font-medium text-gray-500 dark:text-slate-400">Created Date</dt>
+                <dd className="mt-1 flex items-center gap-2 text-sm text-gray-900 dark:text-slate-50"><Calendar className="w-4 h-4 text-gray-400 dark:text-slate-300" />{format(new Date(tenant.createdAt), 'MMMM d, yyyy')}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">Current Plan</dt>
+                <dt className="text-sm font-medium text-gray-500 dark:text-slate-400">Current Plan</dt>
                 <dd className="mt-1 flex items-center gap-2">
-                  <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ${
-                    tenant.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-700' :
-                    tenant.plan === 'PRO' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
+                  <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide ${ tenant.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-700' : tenant.plan === 'PRO' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 dark:text-slate-200' } dark:text-slate-200`}>
                     {tenant.plan}
                   </span>
                 </dd>
@@ -220,8 +216,8 @@ const TenantDetailPage = () => {
 
         {/* Right Column - Features */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 dark:text-slate-50">
               <CreditCard className="w-5 h-5 text-indigo-500" /> Plan Features
             </h2>
             <ul className="space-y-3">
@@ -229,11 +225,11 @@ const TenantDetailPage = () => {
                 const isIncluded = tenant.limits.features.includes(feature);
                 return (
                   <li key={feature} className="flex items-center justify-between">
-                    <span className={`text-sm ${isIncluded ? 'text-gray-700' : 'text-gray-400 line-through'}`}>{feature}</span>
+                    <span className={`text-sm ${isIncluded ? 'text-gray-700 dark:text-slate-200' : 'text-gray-400 line-through'}`}>{feature}</span>
                     {isIncluded ? (
                       <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                     ) : (
-                      <XCircle className="w-5 h-5 text-gray-300" />
+                      <XCircle className="w-5 h-5 text-gray-300 dark:text-slate-300" />
                     )}
                   </li>
                 );

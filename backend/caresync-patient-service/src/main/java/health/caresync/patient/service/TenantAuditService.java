@@ -47,7 +47,8 @@ public class TenantAuditService {
     private static AuditLogResponse toResponse(AuditLog log) {
         return new AuditLogResponse(
             log.getId().toString(), log.getTenantId(), log.getActorUserId(), log.getActorRole(),
-            log.getAction(), log.getResourceType(), log.getResourceId(), log.getRequestId(), log.getCreatedAt()
+            log.getAction(), log.getResourceType(), log.getResourceId(), log.getDelta(), log.getIpAddress(),
+            log.getUserAgent(), log.getRequestId(), log.getCreatedAt()
         );
     }
 }

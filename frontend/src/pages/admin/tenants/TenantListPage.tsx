@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { errorMessage } from '@/lib/error-message';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2,
@@ -66,29 +67,27 @@ const TenantCreatePage = () => {
       if (!response.ok) throw new Error('Failed to create tenant');
       
       navigate('/admin/tenants');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during creation.');
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'An error occurred during creation.'));
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 dark:bg-slate-950">
       <div className="max-w-3xl mx-auto">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between relative">
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 rounded z-0"></div>
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 rounded z-0 dark:bg-slate-800"></div>
             <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 rounded z-0 transition-all duration-300" style={{ width: `${((step - 1) / 2) * 100}%` }}></div>
             
             {[1, 2, 3].map((i) => (
               <div key={i} className="relative z-10 flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${
-                  step >= i ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border-2 border-gray-200'
-                }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${ step >= i ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border-2 border-gray-200 dark:border-slate-700' } dark:text-slate-300 dark:border-slate-700`}>
                   {step > i ? <CheckCircle2 className="w-5 h-5" /> : i}
                 </div>
-                <span className={`mt-2 text-xs font-medium ${step >= i ? 'text-indigo-700' : 'text-gray-500'}`}>
+                <span className={`mt-2 text-xs font-medium ${step >= i ? 'text-indigo-700' : 'text-gray-500 dark:text-slate-400'}`}>
                   {i === 1 ? 'Organization' : i === 2 ? 'Owner' : 'Plan'}
                 </span>
               </div>
@@ -96,9 +95,9 @@ const TenantCreatePage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-700">
           <div className="px-6 py-8 sm:p-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 dark:text-slate-50">
               {step === 1 ? 'Create New Tenant' : step === 2 ? 'Assign Owner' : 'Select Plan'}
             </h2>
 
@@ -113,21 +112,21 @@ const TenantCreatePage = () => {
             {step === 1 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Organization Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">Organization Name</label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input name="name" value={formData.name} onChange={handleChange} placeholder="e.g. City Health Clinic" className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-300" />
+                    <input name="name" value={formData.name} onChange={handleChange} placeholder="e.g. City Health Clinic" className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:border-slate-600" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subdomain</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">Subdomain</label>
                   <div className="flex rounded-lg shadow-sm">
-                    <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                    <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-400">
                       <Globe className="h-4 w-4 mr-2" />
                       https://
                     </span>
-                    <input name="subdomain" value={formData.subdomain} onChange={handleChange} placeholder="city-health" className="flex-1 min-w-0 block w-full px-3 py-3 border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                    <span className="inline-flex items-center px-4 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                    <input name="subdomain" value={formData.subdomain} onChange={handleChange} placeholder="city-health" className="flex-1 min-w-0 block w-full px-3 py-3 border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:border-slate-600" />
+                    <span className="inline-flex items-center px-4 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-400">
                       .caresync.com
                     </span>
                   </div>
@@ -139,19 +138,19 @@ const TenantCreatePage = () => {
             {step === 2 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Owner Full Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">Owner Full Name</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input name="ownerName" value={formData.ownerName} onChange={handleChange} placeholder="Dr. Jane Doe" className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-300" />
+                    <input name="ownerName" value={formData.ownerName} onChange={handleChange} placeholder="Dr. Jane Doe" className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:border-slate-600" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Owner Email Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">Owner Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input name="ownerEmail" type="email" value={formData.ownerEmail} onChange={handleChange} placeholder="admin@cityhealth.com" className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-300" />
+                    <input name="ownerEmail" type="email" value={formData.ownerEmail} onChange={handleChange} placeholder="admin@cityhealth.com" className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:border-slate-600" />
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">An invitation email will be sent here to set up the admin password.</p>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">An invitation email will be sent here to set up the admin password.</p>
                 </div>
               </div>
             )}
@@ -160,21 +159,19 @@ const TenantCreatePage = () => {
             {step === 3 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
                 {['FREE', 'PRO', 'ENTERPRISE'].map((p) => (
-                  <label key={p} className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                    formData.plan === p ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-gray-200 hover:border-gray-300 bg-white'
-                  }`}>
+                  <label key={p} className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${ formData.plan === p ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-gray-200 hover:border-gray-300 bg-white dark:bg-slate-900' } dark:hover:border-slate-600 dark:bg-slate-900`}>
                     <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${formData.plan === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className={`p-2 rounded-lg ${formData.plan === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 dark:text-slate-400'} dark:text-slate-400`}>
                         {p === 'FREE' ? <User className="w-5 h-5" /> : p === 'PRO' ? <ShieldCheck className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{p} Plan</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="font-medium text-gray-900 dark:text-slate-50">{p} Plan</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
                           {p === 'FREE' ? 'Up to 5 users, basic features.' : p === 'PRO' ? 'Up to 50 users, advanced analytics.' : 'Unlimited users, priority support.'}
                         </p>
                       </div>
                     </div>
-                    <input type="radio" name="plan" value={p} checked={formData.plan === p} onChange={handleChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" />
+                    <input type="radio" name="plan" value={p} checked={formData.plan === p} onChange={handleChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-slate-600" />
                   </label>
                 ))}
               </div>
@@ -182,10 +179,10 @@ const TenantCreatePage = () => {
           </div>
 
           {/* Footer Actions */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between dark:bg-slate-950 dark:border-slate-700">
             <button
               onClick={() => step > 1 ? setStep(step - 1) : navigate('/admin/tenants')}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
             >
               {step > 1 ? <><ArrowLeft className="w-4 h-4 mr-2" /> Back</> : 'Cancel'}
             </button>

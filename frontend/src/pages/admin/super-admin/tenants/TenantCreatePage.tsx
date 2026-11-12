@@ -20,6 +20,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/lib/api-client';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -225,19 +226,11 @@ export default function TenantCreatePage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/v1/admin/tenants', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('firebaseToken') ?? ''}`,
-        },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to create tenant');
-      }
-      const result = await res.json();
+      const result = (await api.post<{
+        data?: { id?: string; name?: string };
+        id?: string;
+        name?: string;
+      }>('/api/v1/admin/tenants', form)).data;
       const created = result.data ?? result;
       toast.success(`Tenant "${created.name ?? form.name}" created successfully`);
       navigate(`/admin/super/tenants/${created.id ?? ''}`);
@@ -271,13 +264,13 @@ export default function TenantCreatePage() {
     children: React.ReactNode;
   }) => (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <div className="relative">
         {Icon && (
-          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none dark:text-slate-300" />
         )}
         {children}
       </div>
@@ -287,28 +280,24 @@ export default function TenantCreatePage() {
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-gray-500">{hint}</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{hint}</p>
       ) : null}
     </div>
   );
 
   const inputCls = (field: string) =>
-    `w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${
-      touched[field] && validation[field]
-        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-        : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-    }`;
+    `w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${ touched[field] && validation[field] ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500' }`;
 
   // ───────────────────────────────────────────────
   // Render
   // ───────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 dark:bg-slate-950">
       <div className="max-w-3xl mx-auto">
         {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between relative">
-            <div className="absolute left-0 right-0 top-5 h-0.5 bg-gray-200 -z-0" />
+            <div className="absolute left-0 right-0 top-5 h-0.5 bg-gray-200 -z-0 dark:bg-slate-800" />
             <div
               className="absolute left-0 top-5 h-0.5 bg-indigo-600 transition-all duration-300 -z-0"
               style={{ width: `${((step - 1) / (STEPS.length - 1)) * 100}%` }}
@@ -320,20 +309,12 @@ export default function TenantCreatePage() {
               return (
                 <div key={s.id} className="relative z-10 flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors border-2 ${
-                      done
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : active
-                        ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-100'
-                        : 'bg-white border-gray-300 text-gray-400'
-                    }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors border-2 ${ done ? 'bg-indigo-600 border-indigo-600 text-white' : active ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-100' : 'bg-white border-gray-300 text-gray-400 dark:text-slate-300' } dark:border-slate-600 dark:text-slate-300`}
                   >
                     {done ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
                   <span
-                    className={`mt-2 text-xs font-medium ${
-                      active ? 'text-indigo-700' : done ? 'text-indigo-600' : 'text-gray-500'
-                    }`}
+                    className={`mt-2 text-xs font-medium ${ active ? 'text-indigo-700' : done ? 'text-indigo-600' : 'text-gray-500 dark:text-slate-400' }`}
                   >
                     {s.label}
                   </span>
@@ -344,15 +325,15 @@ export default function TenantCreatePage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-6 sm:px-8 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-700">
+          <div className="px-6 py-6 sm:px-8 border-b border-gray-200 dark:border-slate-700">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-50">
               {step === 1 && 'Organization Details'}
               {step === 2 && 'Tenant Owner'}
               {step === 3 && 'Choose a Plan'}
               {step === 4 && 'Location & Address'}
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               Step {step} of {STEPS.length}
             </p>
           </div>
@@ -395,7 +376,7 @@ export default function TenantCreatePage() {
                   hint="Used for the tenant's dedicated portal URL"
                 >
                   <div className="flex rounded-lg shadow-sm">
-                    <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                    <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-400">
                       https://
                     </span>
                     <input
@@ -407,13 +388,9 @@ export default function TenantCreatePage() {
                       }
                       onBlur={() => markTouched('subdomain')}
                       placeholder="city-health"
-                      className={`flex-1 min-w-0 px-3 py-2.5 border text-sm focus:outline-none focus:ring-2 ${
-                        touched.subdomain && validation.subdomain
-                          ? 'border-red-300 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-indigo-500'
-                      }`}
+                      className={`flex-1 min-w-0 px-3 py-2.5 border text-sm focus:outline-none focus:ring-2 ${ touched.subdomain && validation.subdomain ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500' }`}
                     />
-                    <span className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                    <span className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-400">
                       .caresync.com
                     </span>
                   </div>
@@ -426,7 +403,7 @@ export default function TenantCreatePage() {
                     value={form.description}
                     onChange={(e) => update('description', e.target.value)}
                     placeholder="Briefly describe this tenant..."
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                   />
                 </Field>
 
@@ -435,7 +412,7 @@ export default function TenantCreatePage() {
                     id="timezone"
                     value={form.timezone}
                     onChange={(e) => update('timezone', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                   >
                     {[
                       'UTC',
@@ -537,26 +514,20 @@ export default function TenantCreatePage() {
                   return (
                     <label
                       key={planKey}
-                      className={`block p-5 border-2 rounded-xl cursor-pointer transition-all ${
-                        selected
-                          ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-100'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`block p-5 border-2 rounded-xl cursor-pointer transition-all ${ selected ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-100' : 'border-gray-200 hover:border-gray-300 bg-white dark:bg-slate-900' } dark:hover:border-slate-600 dark:bg-slate-900`}
                     >
                       <div className="flex items-start gap-4">
                         <div
                           className={`p-3 rounded-lg ${
                             selected
-                              ? `bg-gradient-to-br ${p.color} text-white`
-                              : 'bg-gray-100 text-gray-600'
-                          }`}
+                              ? `bg-gradient-to-br ${p.color} text-white`: 'bg-gray-100 text-gray-600 dark:text-slate-300' } dark:text-slate-300`}
                         >
                           <Icon className="w-6 h-6" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900 flex items-center gap-2 dark:text-slate-50">
                                 {p.title}
                                 {planKey === 'PRO' && (
                                   <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
@@ -564,16 +535,16 @@ export default function TenantCreatePage() {
                                   </span>
                                 )}
                               </h3>
-                              <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>
+                              <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{p.description}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-gray-900">{p.price}</p>
-                              <p className="text-xs text-gray-500">/month</p>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-slate-50">{p.price}</p>
+                              <p className="text-xs text-gray-500 dark:text-slate-400">/month</p>
                             </div>
                           </div>
                           <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
                             {p.features.map((f) => (
-                              <li key={f} className="flex items-start gap-1.5 text-xs text-gray-600">
+                              <li key={f} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-slate-300">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
                                 {f}
                               </li>
@@ -586,7 +557,7 @@ export default function TenantCreatePage() {
                           value={planKey}
                           checked={selected}
                           onChange={() => update('plan', planKey)}
-                          className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-slate-600"
                         />
                       </div>
                     </label>
@@ -645,37 +616,37 @@ export default function TenantCreatePage() {
                   />
                 </Field>
 
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 dark:bg-slate-950 dark:border-slate-700">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2 dark:text-slate-50">
                     <ClipboardList className="w-4 h-4 text-indigo-600" />
                     Review
                   </h4>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div>
-                      <dt className="text-gray-500">Name</dt>
-                      <dd className="font-medium text-gray-900">{form.name || '—'}</dd>
+                      <dt className="text-gray-500 dark:text-slate-400">Name</dt>
+                      <dd className="font-medium text-gray-900 dark:text-slate-50">{form.name || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Subdomain</dt>
-                      <dd className="font-medium text-gray-900">
+                      <dt className="text-gray-500 dark:text-slate-400">Subdomain</dt>
+                      <dd className="font-medium text-gray-900 dark:text-slate-50">
                         {form.subdomain || '—'}.caresync.com
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Owner</dt>
-                      <dd className="font-medium text-gray-900">{form.ownerName || '—'}</dd>
+                      <dt className="text-gray-500 dark:text-slate-400">Owner</dt>
+                      <dd className="font-medium text-gray-900 dark:text-slate-50">{form.ownerName || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Email</dt>
-                      <dd className="font-medium text-gray-900">{form.ownerEmail || '—'}</dd>
+                      <dt className="text-gray-500 dark:text-slate-400">Email</dt>
+                      <dd className="font-medium text-gray-900 dark:text-slate-50">{form.ownerEmail || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Plan</dt>
-                      <dd className="font-medium text-gray-900">{form.plan}</dd>
+                      <dt className="text-gray-500 dark:text-slate-400">Plan</dt>
+                      <dd className="font-medium text-gray-900 dark:text-slate-50">{form.plan}</dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Location</dt>
-                      <dd className="font-medium text-gray-900">
+                      <dt className="text-gray-500 dark:text-slate-400">Location</dt>
+                      <dd className="font-medium text-gray-900 dark:text-slate-50">
                         {[form.city, form.country].filter(Boolean).join(', ') || '—'}
                       </dd>
                     </div>
@@ -686,11 +657,11 @@ export default function TenantCreatePage() {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between dark:bg-slate-950 dark:border-slate-700">
             <button
               onClick={handleBack}
               disabled={isSubmitting}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               {step === 1 ? 'Cancel' : 'Back'}

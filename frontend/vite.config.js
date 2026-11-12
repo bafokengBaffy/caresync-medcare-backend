@@ -18,14 +18,15 @@ export default defineConfig(function (_a) {
     if (mode === 'production') {
         var apiUrl = void 0;
         try {
-            apiUrl = new URL((_b = env.VITE_API_BASE_URL) !== null && _b !== void 0 ? _b : '');
+            apiUrl = new URL(((_b = env.VITE_API_BASE_URL) === null || _b === void 0 ? void 0 : _b.trim()) ||
+                'https://caresync-medcare-backend.onrender.com');
         }
         catch (_c) {
-            throw new Error('Set VITE_API_BASE_URL to the deployed HTTPS API gateway before building for production.');
+            throw new Error('VITE_API_BASE_URL must be an absolute HTTPS backend URL for production builds.');
         }
         if (apiUrl.protocol !== 'https:' ||
             ['localhost', '127.0.0.1', '::1'].includes(apiUrl.hostname)) {
-            throw new Error('VITE_API_BASE_URL must use HTTPS and point to a public API gateway in production.');
+            throw new Error('VITE_API_BASE_URL must use HTTPS and point to a public backend in production.');
         }
     }
     return {

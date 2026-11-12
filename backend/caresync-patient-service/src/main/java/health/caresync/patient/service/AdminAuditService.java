@@ -31,6 +31,7 @@ public class AdminAuditService {
         UUID tenantId,
         String action,
         String userId,
+        String resourceType,
         String search,
         int page,
         int size
@@ -53,6 +54,14 @@ public class AdminAuditService {
             criteria = criteria.and((root, query, builder) ->
                 builder.like(builder.lower(root.get("actorUserId")), pattern));
         }
+        if (resourceType != null && !resourceType.isBlank()) {
+            String normalizedType = resourceType.trim().toUpperCase(java.util.Locale.ROOT);
+            if (!normalizedType.matches("[A-Z][A-Z0-9_]{0,49}")) {
+                throw new ValidationException("Resource type filter is invalid");
+            }
+            criteria = criteria.and((root, query, builder) ->
+                builder.equal(builder.upper(root.get("resourceType")), normalizedType));
+        }
         if (search != null && !search.isBlank()) {
             String pattern = "%" + search.trim().toLowerCase() + "%";
             criteria = criteria.and((root, query, builder) -> builder.or(
@@ -74,7 +83,8 @@ public class AdminAuditService {
     private static AuditLogResponse toResponse(AuditLog log) {
         return new AuditLogResponse(
             log.getId().toString(), log.getTenantId(), log.getActorUserId(), log.getActorRole(),
-            log.getAction(), log.getResourceType(), log.getResourceId(), log.getRequestId(), log.getCreatedAt()
+            log.getAction(), log.getResourceType(), log.getResourceId(), log.getDelta(), log.getIpAddress(),
+            log.getUserAgent(), log.getRequestId(), log.getCreatedAt()
         );
     }
 }

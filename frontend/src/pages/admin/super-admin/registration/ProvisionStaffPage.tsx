@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import {
   Building2,
   Shield,
@@ -30,14 +31,13 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/lib/api-client';
 
 // ─────────────────────────────────────────────────────────────
 // Role catalogue (matches SYSTEM_USERS_AND_RESPONSIBILITIES.txt)
 // ─────────────────────────────────────────────────────────────
 type RoleId =
-  | 'SUPER_ADMIN'
   | 'TENANT_ADMIN'
-  | 'ADMIN'
   | 'MANAGER'
   | 'PROVIDER'
   | 'CLINICIAN'
@@ -60,9 +60,7 @@ interface RoleDef {
 }
 
 const ROLES: RoleDef[] = [
-  { id: 'SUPER_ADMIN', name: 'Super Admin', description: 'Full cross-tenant system access.', scope: 'PLATFORM', requiresTenant: false, requiresProviderLink: false, icon: ShieldCheck, color: 'purple' },
   { id: 'TENANT_ADMIN', name: 'Tenant Admin', description: 'Administers one tenant.', scope: 'TENANT', requiresTenant: true, requiresProviderLink: false, icon: Shield, color: 'blue' },
-  { id: 'ADMIN', name: 'Admin', description: 'Organisation-wide admin within a tenant.', scope: 'TENANT', requiresTenant: true, requiresProviderLink: false, icon: Shield, color: 'indigo' },
   { id: 'MANAGER', name: 'Manager', description: 'Day-to-day tenant operations.', scope: 'TENANT', requiresTenant: true, requiresProviderLink: false, icon: ClipboardCheck, color: 'sky' },
   { id: 'PROVIDER', name: 'Provider', description: 'Clinical care. Requires provider record.', scope: 'TENANT', requiresTenant: true, requiresProviderLink: true, icon: Activity, color: 'emerald' },
   { id: 'CLINICIAN', name: 'Clinician', description: 'Clinical services & documentation.', scope: 'TENANT', requiresTenant: true, requiresProviderLink: true, icon: Activity, color: 'teal' },
@@ -120,11 +118,6 @@ const STEPS = [
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 const PHONE_RE = /^\+?[0-9 ()-]{7,20}$/;
-
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${localStorage.getItem('firebaseToken') ?? ''}`,
-});
 
 // ─────────────────────────────────────────────────────────────
 // Component
@@ -185,14 +178,19 @@ export default function ProvisionStaffPage() {
     const load = async () => {
       setIsLoadingTenants(true);
       try {
-        const res = await fetch('/api/v1/admin/tenants?size=200&status=ACTIVE', {
-          headers: authHeaders(),
-        });
-        if (res.ok) {
-          const result = await res.json() as ApiEnvelope<{ content: Tenant[] }> | { content: Tenant[] };
-          const data = 'data' in result ? result.data : result;
-          setTenants(data.content ?? []);
-        }
+        const response = await api.get<ApiEnvelope<{ content: Tenant[] }> | { content: Tenant[] }>(
+          '/api/v1/admin/tenants',
+          { params: { size: 200, status: 'ACTIVE' } },
+        );
+        const result = response.data;
+        const data = 'data' in result ? result.data : result;
+        setTenants(data.content ?? []);
+      } catch (loadError) {
+        const message = isAxiosError<{ message?: string }>(loadError)
+          ? loadError.response?.data?.message ?? 'Could not load active tenants.'
+          : 'Could not load active tenants.';
+        setError(message);
+        toast.error(message);
       } finally {
         setIsLoadingTenants(false);
       }
@@ -209,14 +207,17 @@ export default function ProvisionStaffPage() {
     const load = async () => {
       setIsLoadingProviders(true);
       try {
-        const res = await fetch(
+        const response = await api.get<ApiEnvelope<ProviderRecord[]> | ProviderRecord[]>(
           `/api/v1/admin/tenants/${form.tenantId}/providers`,
-          { headers: authHeaders() }
         );
-        if (res.ok) {
-          const result = await res.json() as ApiEnvelope<ProviderRecord[]> | ProviderRecord[];
-          setProviders(Array.isArray(result) ? result : result.data);
-        }
+        const result = response.data;
+        setProviders(Array.isArray(result) ? result : result.data);
+      } catch (loadError) {
+        const message = isAxiosError<{ message?: string }>(loadError)
+          ? loadError.response?.data?.message ?? 'Could not load providers for this tenant.'
+          : 'Could not load providers for this tenant.';
+        setError(message);
+        toast.error(message);
       } finally {
         setIsLoadingProviders(false);
       }
@@ -235,27 +236,35 @@ export default function ProvisionStaffPage() {
     setLookupStatus('searching');
     setError(null);
     try {
-      const res = await fetch(
-        `/api/v1/admin/firebase/users/lookup?email=${encodeURIComponent(form.email)}`,
-        { headers: authHeaders() }
+      const response = await api.get<
+        ApiEnvelope<{ firebaseUid: string; displayName?: string | null }>
+      >(
+        '/api/v1/admin/firebase/users/lookup',
+        {
+          params: { email: form.email },
+          validateStatus: (status) => status < 500,
+        },
       );
-      if (res.ok) {
-        const data = await res.json();
-        setForm((f) => ({
-          ...f,
-          firebaseUid: data.uid ?? '',
-          fullName: f.fullName || data.displayName || '',
-          mode: 'LINK_EXISTING',
-        }));
-        setLookupStatus('found');
-      } else if (res.status === 404) {
+      if (response.status === 404) {
         setLookupStatus('not-found');
         setForm((f) => ({ ...f, firebaseUid: '', mode: 'NEW_INVITE' }));
-      } else {
-        throw new Error();
+        return;
       }
-    } catch {
-      setLookupStatus('not-found');
+      const data = response.data.data;
+      setForm((f) => ({
+        ...f,
+        firebaseUid: data.firebaseUid,
+        fullName: f.fullName || data.displayName || '',
+        mode: 'LINK_EXISTING',
+      }));
+      setLookupStatus('found');
+    } catch (lookupError) {
+      const message = isAxiosError<{ message?: string }>(lookupError)
+        ? lookupError.response?.data?.message ?? 'Could not look up this Firebase account.'
+        : 'Could not look up this Firebase account.';
+      setError(message);
+      toast.error(message);
+      setLookupStatus('idle');
     }
   };
 
@@ -353,22 +362,17 @@ export default function ProvisionStaffPage() {
         approveRequestId: form.approveRequestId,
       };
 
-      const res = await fetch('/api/v1/admin/users/provision', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Provisioning failed');
-      }
-
-      const created = await res.json();
+      const response = await api.post<ApiEnvelope<{ id?: string; email?: string }>>(
+        '/api/v1/admin/users/provision',
+        payload,
+      );
+      const created = response.data.data;
       toast.success(`User ${created.email ?? form.email} provisioned successfully`);
       navigate(`/admin/super/users/${created.id ?? ''}`);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Provisioning failed';
+      const msg = isAxiosError<{ message?: string }>(e)
+        ? e.response?.data?.message ?? 'Provisioning failed'
+        : e instanceof Error ? e.message : 'Provisioning failed';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -380,25 +384,25 @@ export default function ProvisionStaffPage() {
   // Render
   // ───────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 dark:bg-slate-950">
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
-        <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
+        <div className="mb-4 flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
           <button
             onClick={() => navigate('/admin/super/registration/requests')}
-            className="hover:text-gray-700 inline-flex items-center gap-1"
+            className="hover:text-gray-700 inline-flex items-center gap-1 dark:hover:text-slate-200"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Registration requests
           </button>
           <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-gray-900 font-medium">Provision staff</span>
+          <span className="text-gray-900 font-medium dark:text-slate-50">Provision staff</span>
         </div>
 
         {/* Progress */}
         <div className="mb-6">
           <div className="flex items-center justify-between relative">
-            <div className="absolute left-0 right-0 top-5 h-0.5 bg-gray-200" />
+            <div className="absolute left-0 right-0 top-5 h-0.5 bg-gray-200 dark:bg-slate-800" />
             <div
               className="absolute left-0 top-5 h-0.5 bg-indigo-600 transition-all duration-300"
               style={{ width: `${((step - 1) / (displaySteps.length - 1)) * 100}%` }}
@@ -410,24 +414,12 @@ export default function ProvisionStaffPage() {
               return (
                 <div key={s.id} className="relative z-10 flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                      done
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : active
-                        ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-100'
-                        : 'bg-white border-gray-300 text-gray-400'
-                    }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${ done ? 'bg-indigo-600 border-indigo-600 text-white' : active ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-100' : 'bg-white border-gray-300 text-gray-400 dark:text-slate-300' } dark:border-slate-600 dark:text-slate-300`}
                   >
                     {done ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
                   <span
-                    className={`mt-1.5 text-[11px] font-medium hidden sm:block ${
-                      active
-                        ? 'text-indigo-700'
-                        : done
-                        ? 'text-indigo-600'
-                        : 'text-gray-500'
-                    }`}
+                    className={`mt-1.5 text-[11px] font-medium hidden sm:block ${ active ? 'text-indigo-700' : done ? 'text-indigo-600' : 'text-gray-500 dark:text-slate-400' }`}
                   >
                     {s.label}
                   </span>
@@ -437,17 +429,17 @@ export default function ProvisionStaffPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200 flex items-start justify-between">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-700">
+          <div className="px-6 py-5 border-b border-gray-200 flex items-start justify-between dark:border-slate-700">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-slate-50">
                 {step === 1 && 'Account'}
                 {step === 2 && 'Personal identity'}
                 {step === 3 && 'Role & tenant'}
                 {step === 4 && 'Provider record link'}
                 {step === 5 && 'Review & provision'}
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                 Step {step} of {displaySteps.length}
                 {form.approveRequestId && (
                   <span className="ml-2 inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
@@ -459,7 +451,7 @@ export default function ProvisionStaffPage() {
             </div>
             <button
               onClick={() => navigate('/admin/super/registration/requests')}
-              className="p-1.5 rounded hover:bg-gray-100 text-gray-400"
+              className="p-1.5 rounded hover:bg-gray-100 text-gray-400 dark:hover:bg-slate-900 dark:text-slate-300"
               title="Cancel"
             >
               <X className="w-5 h-5" />
@@ -478,7 +470,7 @@ export default function ProvisionStaffPage() {
             {step === 1 && (
               <div className="space-y-5 animate-in fade-in">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">
                     Provisioning mode
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -487,38 +479,30 @@ export default function ProvisionStaffPage() {
                       onClick={() =>
                         setForm((f) => ({ ...f, mode: 'NEW_INVITE', firebaseUid: '' }))
                       }
-                      className={`text-left p-3 rounded-lg border-2 transition-all ${
-                        form.mode === 'NEW_INVITE'
-                          ? 'border-indigo-600 bg-indigo-50'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`text-left p-3 rounded-lg border-2 transition-all ${ form.mode === 'NEW_INVITE' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 bg-white dark:bg-slate-900' } dark:hover:border-slate-600 dark:bg-slate-900`}
                     >
                       <div className="flex items-center gap-2">
                         <Send className="w-4 h-4 text-indigo-600" />
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-slate-50">
                           Invite new user
                         </p>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
                         Send a Firebase invite email. The user creates their own account.
                       </p>
                     </button>
                     <button
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, mode: 'LINK_EXISTING' }))}
-                      className={`text-left p-3 rounded-lg border-2 transition-all ${
-                        form.mode === 'LINK_EXISTING'
-                          ? 'border-indigo-600 bg-indigo-50'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`text-left p-3 rounded-lg border-2 transition-all ${ form.mode === 'LINK_EXISTING' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 bg-white dark:bg-slate-900' } dark:hover:border-slate-600 dark:bg-slate-900`}
                     >
                       <div className="flex items-center gap-2">
                         <Link2 className="w-4 h-4 text-indigo-600" />
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-slate-50">
                           Link existing account
                         </p>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">
                         Link an existing Firebase account (e.g. self-registered user).
                       </p>
                     </button>
@@ -548,7 +532,7 @@ export default function ProvisionStaffPage() {
                       type="button"
                       onClick={lookupFirebase}
                       disabled={!EMAIL_RE.test(form.email) || lookupStatus === 'searching'}
-                      className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-900 dark:hover:bg-slate-950"
                     >
                       {lookupStatus === 'searching' ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -656,7 +640,7 @@ export default function ProvisionStaffPage() {
                         setForm((f) => ({ ...f, jobTitle: e.target.value }))
                       }
                       placeholder="e.g. Senior Dentist"
-                      className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
                     />
                   </Field>
                 </div>
@@ -667,7 +651,7 @@ export default function ProvisionStaffPage() {
             {step === 3 && (
               <div className="space-y-5 animate-in fade-in">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">
                     Role <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
@@ -689,30 +673,22 @@ export default function ProvisionStaffPage() {
                             }));
                             setTouched((p) => ({ ...p, role: true }));
                           }}
-                          className={`text-left p-3 rounded-lg border-2 transition-all ${
-                            selected
-                              ? 'border-indigo-600 bg-indigo-50'
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
+                          className={`text-left p-3 rounded-lg border-2 transition-all ${ selected ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 bg-white dark:bg-slate-900' } dark:hover:border-slate-600 dark:bg-slate-900`}
                         >
                           <div className="flex items-start gap-2">
                             <div
-                              className={`p-1.5 rounded-md flex-shrink-0 ${
-                                selected
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
+                              className={`p-1.5 rounded-md flex-shrink-0 ${ selected ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 dark:text-slate-300' } dark:text-slate-300`}
                             >
                               <Icon className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                              <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 dark:text-slate-50">
                                 {role.name}
                                 {role.scope === 'PLATFORM' && (
                                   <Lock className="w-3 h-3 text-purple-500" />
                                 )}
                               </p>
-                              <p className="text-xs text-gray-500 mt-0.5">
+                              <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">
                                 {role.description}
                               </p>
                             </div>
@@ -748,7 +724,7 @@ export default function ProvisionStaffPage() {
                         setTouched((p) => ({ ...p, tenantId: true }));
                       }}
                       disabled={isLoadingTenants}
-                      className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                      className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm dark:border-slate-600"
                     >
                       <option value="">
                         {isLoadingTenants ? 'Loading…' : 'Select tenant'}
@@ -801,7 +777,7 @@ export default function ProvisionStaffPage() {
                       setTouched((p) => ({ ...p, providerId: true }));
                     }}
                     disabled={isLoadingProviders}
-                    className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm dark:border-slate-600"
                   >
                     <option value="">
                       {isLoadingProviders ? 'Loading…' : 'Select provider'}
@@ -850,7 +826,7 @@ export default function ProvisionStaffPage() {
                       }))
                     }
                     placeholder="e.g. General Practitioner, Dentist"
-                    className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm dark:border-slate-600"
                   />
                 </Field>
               </div>
@@ -867,7 +843,7 @@ export default function ProvisionStaffPage() {
                   </p>
                 </div>
 
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 dark:border-slate-700 dark:divide-slate-700">
                   <ReviewRow label="Email" value={form.email} />
                   <ReviewRow
                     label="Account mode"
@@ -936,18 +912,18 @@ export default function ProvisionStaffPage() {
                       setForm((f) => ({ ...f, notes: e.target.value }))
                     }
                     placeholder="Internal notes for audit trail"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm dark:border-slate-600"
                   />
                 </Field>
               </div>
             )}
           </div>
 
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between dark:bg-slate-950 dark:border-slate-700">
             <button
               onClick={back}
               disabled={isSubmitting}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               {step === 1 ? 'Cancel' : 'Back'}
@@ -964,7 +940,7 @@ export default function ProvisionStaffPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-start gap-2 text-xs text-gray-500">
+        <div className="mt-4 flex items-start gap-2 text-xs text-gray-500 dark:text-slate-400">
           <Lock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
           <p>
             Only <strong>SUPER_ADMIN</strong> or <strong>TENANT_ADMIN</strong> role claims can
@@ -999,13 +975,13 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-200">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <div className="relative">
         {Icon && (
-          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
+          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10 dark:text-slate-300" />
         )}
         {children}
       </div>
@@ -1015,7 +991,7 @@ function Field({
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-gray-500">{hint}</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{hint}</p>
       ) : null}
     </div>
   );
@@ -1033,16 +1009,16 @@ function CheckboxRow({
   description: string;
 }) {
   return (
-    <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 cursor-pointer">
+    <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 cursor-pointer dark:bg-slate-950 dark:border-slate-700 dark:hover:border-slate-600">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+        className="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded dark:border-slate-600"
       />
       <div>
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-slate-50">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{description}</p>
       </div>
     </label>
   );
@@ -1059,13 +1035,11 @@ function ReviewRow({
 }) {
   return (
     <div className="px-4 py-3 flex items-start justify-between gap-4">
-      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide dark:text-slate-400">
         {label}
       </span>
       <span
-        className={`text-sm text-gray-900 font-medium text-right break-all ${
-          mono ? 'font-mono text-xs' : ''
-        }`}
+        className={`text-sm text-gray-900 font-medium text-right break-all ${ mono ? 'font-mono text-xs' : '' } dark:text-slate-50`}
       >
         {value || '—'}
       </span>
@@ -1074,9 +1048,5 @@ function ReviewRow({
 }
 
 function inputCls(field: string, touched?: boolean, error?: string | null) {
-  return `w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${
-    touched && error
-      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-      : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-  }`;
+  return `w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${ touched && error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500' }`;
 }

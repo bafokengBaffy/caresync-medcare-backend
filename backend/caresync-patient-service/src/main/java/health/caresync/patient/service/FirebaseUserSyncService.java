@@ -1,5 +1,7 @@
 package health.caresync.patient.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.ListUsersPage;
@@ -9,14 +11,12 @@ import health.caresync.patient.domain.repository.TenantRepository;
 import health.caresync.patient.dto.FirebaseUserSyncResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import health.caresync.common.security.CaresyncPrincipal;
@@ -24,7 +24,6 @@ import health.caresync.common.tenant.TenantRlsContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,40 +49,35 @@ public class FirebaseUserSyncService {
     private final FirebaseAuth firebaseAuth;
     private final TenantRepository tenants;
     private final JdbcTemplate jdbcTemplate;
-    private final Set<String> bootstrapAdminEmails;
-    private final Set<String> tenantAdminEmails;
-    private final Set<String> superAdminEmails;
-    private final String bootstrapAdminTenantSubdomain;
     private final TenantRlsContext tenantRlsContext;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public FirebaseUserSyncService(
         FirebaseAuth firebaseAuth,
         TenantRepository tenants,
         JdbcTemplate jdbcTemplate,
-        @Value("${caresync.firebase.bootstrap-admin-email:}") String bootstrapAdminEmail,
-        @Value("${caresync.firebase.bootstrap-admin-tenant-subdomain:caresync}") String bootstrapAdminTenantSubdomain,
-        @Value("${caresync.firebase.super-admin-email:}") String superAdminEmail,
-        @Value("${caresync.firebase.tenant-admin-email:}") String tenantAdminEmail,
-        TenantRlsContext tenantRlsContext
+        TenantRlsContext tenantRlsContext,
+        ObjectMapper objectMapper
     ) {
         this.firebaseAuth = firebaseAuth;
         this.tenants = tenants;
         this.jdbcTemplate = jdbcTemplate;
-        this.bootstrapAdminEmails = Arrays.stream(bootstrapAdminEmail == null ? new String[0] : bootstrapAdminEmail.split(","))
-            .map(FirebaseUserSyncService::normalizeEmail)
-            .filter(email -> !email.isBlank())
-            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        this.superAdminEmails = Arrays.stream(superAdminEmail == null ? new String[0] : superAdminEmail.split(","))
-            .map(FirebaseUserSyncService::normalizeEmail)
-            .filter(email -> !email.isBlank())
-            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        this.tenantAdminEmails = Arrays.stream(tenantAdminEmail == null ? new String[0] : tenantAdminEmail.split(","))
-            .map(FirebaseUserSyncService::normalizeEmail)
-            .filter(email -> !email.isBlank())
-            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        this.bootstrapAdminTenantSubdomain = bootstrapAdminTenantSubdomain;
         this.tenantRlsContext = tenantRlsContext;
+        this.objectMapper = objectMapper;
+    }
+
+    public FirebaseUserSyncService(
+        FirebaseAuth firebaseAuth,
+        TenantRepository tenants,
+        JdbcTemplate jdbcTemplate,
+        String bootstrapAdminEmail,
+        String bootstrapAdminTenantSubdomain,
+        String superAdminEmail,
+        String tenantAdminEmail,
+        TenantRlsContext tenantRlsContext
+    ) {
+        this(firebaseAuth, tenants, jdbcTemplate, tenantRlsContext, new ObjectMapper());
     }
 
     public FirebaseUserSyncService(
@@ -93,7 +87,7 @@ public class FirebaseUserSyncService {
         String bootstrapAdminEmail,
         String bootstrapAdminTenantSubdomain
     ) {
-        this(firebaseAuth, tenants, jdbcTemplate, bootstrapAdminEmail, bootstrapAdminTenantSubdomain, "", "", null);
+        this(firebaseAuth, tenants, jdbcTemplate, null, new ObjectMapper());
     }
 
     @Transactional
@@ -112,16 +106,22 @@ public class FirebaseUserSyncService {
             firebaseAuth.setCustomUserClaims(uid, claims);
             tenantId = null;
             role = "SUPER_ADMIN";
-        } else if (isTenantAdmin(user) || isBootstrapAdmin(user)) {
-            tenantId = adminTenantId(user, tenantId,
-                tenants.findAll().stream().map(Tenant::getId).collect(java.util.stream.Collectors.toUnmodifiableSet()));
-            if (tenantId == null) {
+        } else if (isTenantAdmin(user)) {
+            if (tenantId == null || tenants.findById(tenantId).filter(Tenant::isActive).isEmpty()) {
                 throw new IllegalStateException("CareSync tenant is not available for admin provisioning");
             }
-            role = isTenantAdmin(user) ? "TENANT_ADMIN" : "ADMIN";
-            claims.put("role", role);
-            claims.put("tenant_id", tenantId.toString());
-            firebaseAuth.setCustomUserClaims(uid, claims);
+            role = "TENANT_ADMIN";
+        }
+
+        RegistrationPolicy registrationPolicy = null;
+        UUID requestedTenantId = null;
+        String normalizedEmail = normalizeEmail(user.getEmail() == null ? email : user.getEmail());
+        if (!platformAdmin && (tenantId == null || role == null)) {
+            registrationPolicy = loadRegistrationPolicy();
+            enforceRegistrationPolicy(registrationPolicy, user, normalizedEmail);
+            // Resolve while the trusted platform-policy read context is active.
+            // The public user's RLS identity must be restored before any writes.
+            requestedTenantId = resolveDefaultTenant(registrationPolicy.defaultTenantId());
         }
 
         if (tenantRlsContext != null) {
@@ -138,15 +138,15 @@ public class FirebaseUserSyncService {
                 Boolean.toString(platformAdmin)
             );
         }
-        writeBatch(List.of(new SyncUser(uid, normalizeEmail(user.getEmail() == null ? email : user.getEmail()),
+        writeBatch(List.of(new SyncUser(uid, normalizedEmail,
             role, tenantId, user.isDisabled())));
         if (!platformAdmin && (tenantId == null || role == null)) {
             jdbcTemplate.update("""
-                INSERT INTO registration_requests (email, firebase_uid, requested_role, status)
-                VALUES (?, ?, 'PATIENT', 'PENDING')
+                INSERT INTO registration_requests (email, firebase_uid, requested_role, requested_tenant_id, status)
+                VALUES (?, ?, 'PATIENT', ?, 'PENDING')
                 ON CONFLICT (firebase_uid) WHERE status = 'PENDING' DO NOTHING
                 """,
-                normalizeEmail(user.getEmail() == null ? email : user.getEmail()), uid
+                normalizedEmail, uid, requestedTenantId
             );
             return new ProvisionedUser(null, null, specialty, "PENDING_APPROVAL");
         }
@@ -175,20 +175,15 @@ public class FirebaseUserSyncService {
                     }
                     role = "SUPER_ADMIN";
                     tenantId = null;
-                } else if (isTenantAdmin(user) || isBootstrapAdmin(user)) {
-                    UUID adminTenantId = adminTenantId(user, tenantId, existingTenants);
-                    if (adminTenantId != null) {
-                        String provisionedRole = isTenantAdmin(user) ? "TENANT_ADMIN" : "ADMIN";
-                        boolean claimsChanged = !provisionedRole.equals(role)
-                            || !adminTenantId.toString().equals(claims.get("tenant_id"));
-                        if (claimsChanged) {
-                            claims.put("role", provisionedRole);
-                            claims.put("tenant_id", adminTenantId.toString());
-                            firebaseAuth.setCustomUserClaims(user.getUid(), claims);
-                        }
-                        role = provisionedRole;
-                        tenantId = adminTenantId;
-                    }
+                } else if (isTenantAdmin(user) && tenantId == null) {
+                    // Preserve legacy identity data for review, but never sync an invalid
+                    // tenant-admin claim as an active tenant membership.
+                    role = null;
+                } else if ("ADMIN".equals(role)) {
+                    // Preserve the legacy row for the V35 review inventory, but
+                    // never reproduce an untrusted legacy role assignment.
+                    role = null;
+                    tenantId = null;
                 }
                 if (tenantId == null) {
                     withoutTenant++;
@@ -203,6 +198,89 @@ public class FirebaseUserSyncService {
         LOGGER.info("Synced {} Firebase Auth users across {} pages; {} users have no existing tenant mapping",
             synced, pages, withoutTenant);
         return new FirebaseUserSyncResponse(synced, withoutTenant, pages);
+    }
+
+    private RegistrationPolicy loadRegistrationPolicy() {
+        // Read only the platform policy, then restore RLS to the authenticated
+        // identity before writing the request under its self-service policy.
+        jdbcTemplate.queryForObject(
+            "select set_config('app.is_super_admin', ?, true)", String.class, "true"
+        );
+        List<String> stored = jdbcTemplate.query(
+            "SELECT configuration_value FROM admin_configurations "
+                + "WHERE scope = 'PLATFORM' AND tenant_id IS NULL AND configuration_key = 'registration'",
+            (resultSet, rowNumber) -> resultSet.getString(1)
+        );
+        if (stored == null || stored.isEmpty()) return RegistrationPolicy.defaults();
+        try {
+            JsonNode value = objectMapper.readTree(stored.get(0));
+            Set<String> roles = readStringSet(value.path("allowedPublicRoles"), Set.of("PATIENT"));
+            Set<String> domains = readStringSet(value.path("allowedEmailDomains"), Set.of()).stream()
+                .map(domain -> domain.toLowerCase(Locale.ROOT).replaceFirst("^@", ""))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            int maxAttempts = value.path("maxSignupAttemptsPerEmail").canConvertToInt()
+                ? Math.max(1, value.path("maxSignupAttemptsPerEmail").asInt()) : 3;
+            return new RegistrationPolicy(
+                value.path("publicSignupEnabled").asBoolean(true),
+                value.path("requireEmailVerification").asBoolean(true),
+                roles,
+                domains,
+                maxAttempts,
+                value.path("defaultTenantId").asText("").trim()
+            );
+        } catch (Exception exception) {
+            throw new IllegalStateException("Registration policy is unavailable or invalid", exception);
+        }
+    }
+
+    private void enforceRegistrationPolicy(RegistrationPolicy policy, UserRecord user, String email) {
+        if (!policy.publicSignupEnabled()) {
+            throw new health.caresync.common.exception.ForbiddenException("Public registration is disabled");
+        }
+        if (!policy.allowedPublicRoles().contains("PATIENT")) {
+            throw new health.caresync.common.exception.ForbiddenException("Patient registration is not enabled");
+        }
+        if (policy.requireEmailVerification() && !user.isEmailVerified()) {
+            throw new health.caresync.common.exception.ForbiddenException("Verify your email before requesting access");
+        }
+        if (!policy.allowedEmailDomains().isEmpty()) {
+            int separator = email.lastIndexOf('@');
+            String domain = separator < 0 ? "" : email.substring(separator + 1).toLowerCase(Locale.ROOT);
+            if (!policy.allowedEmailDomains().contains(domain)) {
+                throw new health.caresync.common.exception.ForbiddenException("This email domain is not allowed to register");
+            }
+        }
+        Long attempts = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM registration_requests WHERE lower(email) = lower(?)",
+            Long.class,
+            email
+        );
+        if (attempts != null && attempts >= policy.maxSignupAttemptsPerEmail()) {
+            throw new health.caresync.common.exception.ForbiddenException("The registration attempt limit for this email has been reached");
+        }
+    }
+
+    private UUID resolveDefaultTenant(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) return null;
+        UUID parsed;
+        try {
+            parsed = UUID.fromString(tenantId);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("Configured default registration tenant is invalid", exception);
+        }
+        Tenant tenant = tenants.findById(parsed)
+            .orElseThrow(() -> new IllegalStateException("Configured default registration tenant does not exist"));
+        if (!tenant.isActive()) throw new IllegalStateException("Configured default registration tenant is inactive");
+        return parsed;
+    }
+
+    private static Set<String> readStringSet(JsonNode node, Set<String> fallback) {
+        if (!node.isArray()) return fallback;
+        LinkedHashSet<String> values = new LinkedHashSet<>();
+        node.forEach(item -> {
+            if (item.isTextual() && !item.asText().isBlank()) values.add(item.asText().trim().toUpperCase(Locale.ROOT));
+        });
+        return Set.copyOf(values);
     }
 
     @Scheduled(
@@ -251,46 +329,12 @@ public class FirebaseUserSyncService {
         }
     }
 
-    private boolean isBootstrapAdmin(UserRecord user) {
-        return !bootstrapAdminEmails.isEmpty()
-            && !isSuperAdmin(user)
-            && user.isEmailVerified()
-            && bootstrapAdminEmails.contains(normalizeEmail(user.getEmail()));
-    }
-
     private boolean isTenantAdmin(UserRecord user) {
-        return !tenantAdminEmails.isEmpty()
-            && !isSuperAdmin(user)
-            && user.isEmailVerified()
-            && tenantAdminEmails.contains(normalizeEmail(user.getEmail()));
+        return "TENANT_ADMIN".equals(stringClaim(user.getCustomClaims().get("role")));
     }
 
     private boolean isSuperAdmin(UserRecord user) {
-        return !superAdminEmails.isEmpty()
-            && user.isEmailVerified()
-            && superAdminEmails.contains(normalizeEmail(user.getEmail()));
-    }
-
-    private UUID bootstrapAdminTenantId(UUID claimedTenantId, Set<UUID> existingTenants, UserRecord user) {
-        if (claimedTenantId != null) {
-            return claimedTenantId;
-        }
-        Optional<Tenant> configuredTenant = tenants.findBySubdomain(bootstrapAdminTenantSubdomain);
-        if (configuredTenant.isEmpty()) {
-            Tenant tenant = new Tenant();
-            tenant.setName("CareSync MedCare");
-            tenant.setSubdomain(bootstrapAdminTenantSubdomain);
-            tenant.setActive(true);
-            configuredTenant = Optional.of(tenants.saveAndFlush(tenant));
-            LOGGER.info("Created CareSync tenant '{}' during bootstrap provisioning", bootstrapAdminTenantSubdomain);
-        }
-        return configuredTenant.map(Tenant::getId).orElse(null);
-    }
-
-    private UUID adminTenantId(UserRecord user, UUID claimedTenantId, Set<UUID> existingTenants) {
-        // The allow-listed tenant admin always belongs to the configured CareSync tenant.
-        // A stale or forged tenant claim must not move this account to another tenant.
-        return bootstrapAdminTenantId(isTenantAdmin(user) ? null : claimedTenantId, existingTenants, user);
+        return "SUPER_ADMIN".equals(stringClaim(user.getCustomClaims().get("role")));
     }
 
     private static String stringClaim(Object claim) {
@@ -302,5 +346,17 @@ public class FirebaseUserSyncService {
     }
 
     public record ProvisionedUser(UUID tenantId, String role, String specialty, String status) { }
+    private record RegistrationPolicy(
+        boolean publicSignupEnabled,
+        boolean requireEmailVerification,
+        Set<String> allowedPublicRoles,
+        Set<String> allowedEmailDomains,
+        int maxSignupAttemptsPerEmail,
+        String defaultTenantId
+    ) {
+        private static RegistrationPolicy defaults() {
+            return new RegistrationPolicy(true, true, Set.of("PATIENT"), Set.of(), 3, "");
+        }
+    }
     private record SyncUser(String uid, String email, String role, UUID tenantId, boolean disabled) { }
 }

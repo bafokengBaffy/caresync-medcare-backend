@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 const roles = [
   { name: 'SUPER_ADMIN', scope: 'Platform-wide tenant, policy, and administrative operations.' },
   { name: 'TENANT_ADMIN', scope: 'Administration limited to the authenticated tenant.' },
-  { name: 'ADMIN', scope: 'Operational access is limited by server-side permissions and tenant scope.' },
 ];
 
 export default function RoleManagementPage() {

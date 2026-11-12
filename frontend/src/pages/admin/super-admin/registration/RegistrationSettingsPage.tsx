@@ -437,7 +437,7 @@ export default function RegistrationSettingsPage() {
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2 text-sm text-blue-800 mb-4">
                   <Lock className="w-5 h-5 flex-shrink-0 mt-0.5" />
                   <p>
-                    <strong>Hard policy:</strong> ADMIN, MANAGER, PROVIDER, CLINICIAN,
+                    <strong>Hard policy:</strong> MANAGER, PROVIDER, CLINICIAN,
                     RECEPTION, FINANCE, CONSENT_MANAGER, PRIVACY_OFFICER, SUPER_ADMIN and
                     TENANT_ADMIN can <strong>never</strong> be auto-granted via public signup.
                     They must always be admin-approved and provisioned.
@@ -770,7 +770,7 @@ export default function RegistrationSettingsPage() {
                         </li>
                         <li className="flex items-start gap-1">
                           <Ban className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          FINANCE and ADMIN require explicit tenant + permission grant
+                          FINANCE and other staff roles require explicit tenant + permission grant
                         </li>
                         <li className="flex items-start gap-1">
                           <Ban className="w-3 h-3 mt-0.5 flex-shrink-0" />

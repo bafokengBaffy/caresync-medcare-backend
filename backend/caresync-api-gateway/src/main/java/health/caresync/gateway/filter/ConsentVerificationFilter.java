@@ -58,7 +58,6 @@ public class ConsentVerificationFilter implements GlobalFilter, Ordered {
 
     /** Allowed roles that may access PHI only when consent is present. */
     private static final Set<String> CONSENT_EXEMPT_ROLES = Set.of(
-            "SYSTEM_ADMIN",
             "SUPER_ADMIN"
     );
 

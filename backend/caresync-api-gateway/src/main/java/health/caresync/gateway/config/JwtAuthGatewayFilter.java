@@ -22,7 +22,7 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
     );
     private static final Set<String> ALLOWED_ROLES =
         Set.of(
-            "SUPER_ADMIN", "TENANT_ADMIN", "PATIENT", "ADMIN", "PROVIDER", "STAFF",
+            "SUPER_ADMIN", "TENANT_ADMIN", "PATIENT", "PROVIDER", "STAFF",
             "RECEPTION", "FINANCE", "MANAGER", "CONSENT_MANAGER", "CLINICIAN",
             "PRIVACY_OFFICER", "RECEPTIONIST"
         );

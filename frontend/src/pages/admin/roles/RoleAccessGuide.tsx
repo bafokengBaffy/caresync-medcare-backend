@@ -4,7 +4,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const tenantRoles = [
   'TENANT_ADMIN',
-  'ADMIN',
   'MANAGER',
   'PROVIDER',
   'CLINICIAN',

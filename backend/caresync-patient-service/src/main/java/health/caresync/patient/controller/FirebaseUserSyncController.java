@@ -81,7 +81,7 @@ public class FirebaseUserSyncController {
     }
 
     @PostMapping("/admin/sync-users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> syncAllUsers() throws FirebaseAuthException {
         return ResponseEntity.ok(syncService.syncAllUsers());
     }

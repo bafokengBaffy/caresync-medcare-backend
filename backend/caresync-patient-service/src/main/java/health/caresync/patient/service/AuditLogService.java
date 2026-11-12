@@ -56,6 +56,9 @@ public class AuditLogService {
             log.getAction(),
             log.getResourceType(),
             log.getResourceId(),
+            log.getDelta(),
+            log.getIpAddress(),
+            log.getUserAgent(),
             log.getRequestId(),
             log.getCreatedAt()
         );

@@ -30,55 +30,36 @@ public class PermissionCheckService {
      * Immutable RBAC map: role -> set of permissions.
      * Extend as needed; keep it authoritative (never derive from client input).
      */
-    private static final Map<String, Set<String>> ROLE_PERMISSIONS = Map.of(
-            "SUPER_ADMIN", Set.of(
-                    "patient:read", "patient:write", "patient:delete",
-                    "clinical:read", "clinical:write",
-                    "billing:read", "billing:write",
-                    "laboratory:read", "laboratory:write",
-                    "appointment:read", "appointment:write",
-                    "payroll:read", "payroll:write",
-                    "admin:read", "admin:write",
-                    "audit:read"),
-            "SYSTEM_ADMIN", Set.of(
-                    "patient:read", "patient:write", "patient:delete",
-                    "clinical:read", "clinical:write",
-                    "billing:read", "billing:write",
-                    "laboratory:read", "laboratory:write",
-                    "appointment:read", "appointment:write",
-                    "admin:read", "admin:write",
-                    "audit:read"),
-            "TENANT_ADMIN", Set.of(
+    private static final Map<String, Set<String>> ROLE_PERMISSIONS = Map.ofEntries(
+            Map.entry("SUPER_ADMIN", Set.of(
+                    "admin:read", "admin:write", "audit:read", "settings:manage",
+                    "integrations:manage", "users:manage", "tenants:manage")),
+            Map.entry("TENANT_ADMIN", Set.of(
+                    "admin:read", "admin:write", "audit:read", "settings:manage", "users:manage")),
+            Map.entry("PROVIDER", Set.of(
                     "patient:read", "patient:write",
                     "clinical:read", "clinical:write",
-                    "billing:read", "billing:write",
-                    "appointment:read", "appointment:write",
-                    "admin:read",
-                    "audit:read"),
-            "PROVIDER", Set.of(
-                    "patient:read",
+                    "appointment:read", "appointment:write")),
+            Map.entry("CLINICIAN", Set.of(
+                    "patient:read", "patient:write",
                     "clinical:read", "clinical:write",
-                    "appointment:read", "appointment:write"),
-            "NURSE", Set.of(
-                    "patient:read",
-                    "clinical:read", "clinical:write",
-                    "appointment:read"),
-            "RECEPTIONIST", Set.of(
+                    "appointment:read", "appointment:write")),
+            Map.entry("RECEPTION", Set.of(
+                    "patient:read", "patient:write", "appointment:read", "appointment:write", "billing:read")),
+            Map.entry("RECEPTIONIST", Set.of(
                     "patient:read", "patient:write",
                     "appointment:read", "appointment:write",
-                    "billing:read"),
-            "FINANCE_OFFICER", Set.of(
-                    "patient:read",
-                    "billing:read", "billing:write"),
-            "LAB_TECHNICIAN", Set.of(
-                    "patient:read",
-                    "laboratory:read", "laboratory:write"),
-            "PATIENT", Set.of(
-                    "patient-portal:read")
+                    "billing:read")),
+            Map.entry("FINANCE", Set.of("billing:read", "billing:write")),
+            Map.entry("CONSENT_MANAGER", Set.of("consent:read", "consent:write")),
+            Map.entry("PRIVACY_OFFICER", Set.of("audit:read", "consent:read")),
+            Map.entry("MANAGER", Set.of("appointment:read")),
+            Map.entry("STAFF", Set.of()),
+            Map.entry("PATIENT", Set.of("patient-portal:read"))
     );
 
     /** Platform-level roles allowed to operate cross-tenant. */
-    private static final Set<String> PLATFORM_ROLES = Set.of("SUPER_ADMIN", "SYSTEM_ADMIN");
+    private static final Set<String> PLATFORM_ROLES = Set.of("SUPER_ADMIN");
 
     /**
      * Returns true if the identity is authorized for the given permission
@@ -94,8 +75,8 @@ public class PermissionCheckService {
 
         // Tenant isolation: non-platform roles may only act on their own tenant (A01).
         if (!isPlatformRole(identity)) {
-            if (targetTenantId != null
-                    && identity.tenantId() != null
+            if (identity.tenantId() == null
+                    || targetTenantId != null
                     && !constantTimeEquals(identity.tenantId(), targetTenantId)) {
                 log.warn("rbac_denied reason=tenant_mismatch permission={}", safe(permission));
                 return false;

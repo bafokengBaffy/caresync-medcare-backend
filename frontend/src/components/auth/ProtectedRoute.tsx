@@ -7,6 +7,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   if (loading) return <div className="flex min-h-screen items-center justify-center"><Spinner /></div>;
   if (pendingApproval) return <Navigate to="/auth/pending-approval" replace />;
-  if (!isAuthenticated) return <Navigate to="/auth/login" state={{ from: loc }} replace />;
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: loc }} replace />;
   return <>{children}</>;
 }

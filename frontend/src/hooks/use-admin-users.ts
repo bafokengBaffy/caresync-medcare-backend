@@ -30,7 +30,7 @@ export function useProvisionTenantAdmin(tenantId: string) {
 export function useUpdateTenantAdminStatus(tenantId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { firebaseUid: string; status: AdminUser['status'] }) =>
+    mutationFn: (input: { firebaseUid: string; status: Exclude<AdminUser['status'], 'DELETED'> }) =>
       adminUsersApi.updateTenantAdminStatus(tenantId, input.firebaseUid, input.status),
     onSuccess: () => {
       toast.success('Administrator status updated');

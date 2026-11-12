@@ -1,5 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { errorMessage } from '@/lib/error-message';
 import {
   Users,
   Search,
@@ -7,1072 +13,577 @@ import {
   ShieldAlert,
   ShieldCheck,
   Ban,
-  CheckCircle2,
-  XCircle,
+  CheckCircle,
   Mail,
-  Building2,
+  Building,
   Loader2,
   AlertCircle,
-  Filter,
-  RefreshCw,
-  Download,
+  Plus,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  MoreVertical,
-  Eye,
-  Edit2,
-  KeyRound,
-  Trash2,
+  Filter,
+  Download,
+  RefreshCw,
+  MoreHorizontal,
+  UserCog,
   UserPlus,
-  Clock,
-  UserX,
-  Power,
-  Send,
-  Fingerprint,
-  X,
+  KeyRound,
 } from 'lucide-react';
-import { toast } from 'sonner';
+
+import api from '@/lib/api-client';
+import { adminTenantsApi } from '@/api/admin-tenants';
+import { normalizePage } from '@/lib/pagination';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // ─────────────────────────────────────────────────────────────
-// Types
+// Types & Schemas
 // ─────────────────────────────────────────────────────────────
-type Role =
-  | 'SUPER_ADMIN'
-  | 'TENANT_ADMIN'
-  | 'ADMIN'
-  | 'MANAGER'
-  | 'PROVIDER'
-  | 'CLINICIAN'
-  | 'RECEPTION'
-  | 'RECEPTIONIST'
-  | 'STAFF'
-  | 'FINANCE'
-  | 'CONSENT_MANAGER'
-  | 'PRIVACY_OFFICER'
-  | 'PATIENT';
-
-type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'LOCKED' | 'DEACTIVATED';
+const PAGE_SIZE = 15;
 
 interface AdminUser {
-  id: string;
+  firebaseUid: string;
   email: string;
   fullName: string;
-  firebaseUid: string;
-  role: Role;
-  status: UserStatus;
-  tenantId?: string;
-  tenantName?: string;
-  providerId?: string;
-  providerName?: string;
-  emailVerified: boolean;
-  mfaEnabled: boolean;
-  lastLogin?: string;
+  role: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+  tenantId: string | null;
+  tenantName: string | null;
   createdAt: string;
-  hasRoleClaim: boolean;
-  hasUserRecord: boolean;
-  hasTenant: boolean;
-  hasProviderLink: boolean;
+  lastLoginAt: string | null;
   permissions?: string[];
 }
 
-interface ListResponse {
-  content: AdminUser[];
-  totalElements: number;
-  totalPages: number;
+interface PaginatedResponse<T> {
+  content: T[];
+  total: number;
+  page: number;
+  size: number;
 }
 
-const PAGE_SIZE = 15;
-
-// ─────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────
-const ROLE_META: Record<
-  Role,
-  { label: string; badge: string; icon: typeof Shield; scope: 'PLATFORM' | 'TENANT' | 'PATIENT' }
-> = {
-  SUPER_ADMIN: { label: 'Super Admin', badge: 'bg-purple-100 text-purple-700', icon: ShieldAlert, scope: 'PLATFORM' },
-  TENANT_ADMIN: { label: 'Tenant Admin', badge: 'bg-blue-100 text-blue-700', icon: ShieldCheck, scope: 'TENANT' },
-  ADMIN: { label: 'Admin', badge: 'bg-indigo-100 text-indigo-700', icon: Shield, scope: 'TENANT' },
-  MANAGER: { label: 'Manager', badge: 'bg-sky-100 text-sky-700', icon: Shield, scope: 'TENANT' },
-  PROVIDER: { label: 'Provider', badge: 'bg-emerald-100 text-emerald-700', icon: Shield, scope: 'TENANT' },
-  CLINICIAN: { label: 'Clinician', badge: 'bg-teal-100 text-teal-700', icon: Shield, scope: 'TENANT' },
-  RECEPTION: { label: 'Reception', badge: 'bg-cyan-100 text-cyan-700', icon: Shield, scope: 'TENANT' },
-  RECEPTIONIST: { label: 'Receptionist', badge: 'bg-cyan-100 text-cyan-700', icon: Shield, scope: 'TENANT' },
-  STAFF: { label: 'Staff', badge: 'bg-gray-100 text-gray-700', icon: Shield, scope: 'TENANT' },
-  FINANCE: { label: 'Finance', badge: 'bg-amber-100 text-amber-700', icon: Shield, scope: 'TENANT' },
-  CONSENT_MANAGER: { label: 'Consent Manager', badge: 'bg-rose-100 text-rose-700', icon: Shield, scope: 'TENANT' },
-  PRIVACY_OFFICER: { label: 'Privacy Officer', badge: 'bg-pink-100 text-pink-700', icon: Shield, scope: 'TENANT' },
-  PATIENT: { label: 'Patient', badge: 'bg-slate-100 text-slate-700', icon: Users, scope: 'PATIENT' },
-};
-
-const STATUS_META: Record<UserStatus, { label: string; cls: string; icon: typeof CheckCircle2 }> = {
-  ACTIVE: { label: 'Active', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  SUSPENDED: { label: 'Suspended', cls: 'bg-red-50 text-red-700 border-red-200', icon: Ban },
-  PENDING: { label: 'Pending', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-  LOCKED: { label: 'Locked', cls: 'bg-orange-50 text-orange-700 border-orange-200', icon: AlertCircle },
-  DEACTIVATED: { label: 'Deactivated', cls: 'bg-gray-50 text-gray-700 border-gray-200', icon: UserX },
-};
-
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${localStorage.getItem('firebaseToken') ?? ''}`,
+const roleSchema = z.object({
+  role: z.enum([
+    'TENANT_ADMIN',
+    'MANAGER',
+    'PROVIDER',
+    'CLINICIAN',
+    'RECEPTION',
+    'RECEPTIONIST',
+    'STAFF',
+    'FINANCE',
+    'CONSENT_MANAGER',
+    'PRIVACY_OFFICER',
+  ]),
 });
+
+type RoleFormValues = z.infer<typeof roleSchema>;
+
+const ROLE_BADGES: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  SUPER_ADMIN: { label: 'Super Admin', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: ShieldAlert },
+  TENANT_ADMIN: { label: 'Tenant Admin', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: ShieldCheck },
+  MANAGER: { label: 'Manager', color: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200', icon: UserCog },
+  PROVIDER: { label: 'Provider', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200', icon: Shield },
+  CLINICIAN: { label: 'Clinician', color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200', icon: Shield },
+  RECEPTION: { label: 'Reception', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200', icon: Users },
+  RECEPTIONIST: { label: 'Receptionist', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200', icon: Users },
+  STAFF: { label: 'Staff', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: Users },
+  FINANCE: { label: 'Finance', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', icon: Shield },
+  CONSENT_MANAGER: { label: 'Consent Manager', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200', icon: Shield },
+  PRIVACY_OFFICER: { label: 'Privacy Officer', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200', icon: Shield },
+};
+
+const STATUS_BADGES: Record<string, string> = {
+  ACTIVE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+  SUSPENDED: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  DELETED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+};
 
 // ─────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────
 export default function UserListPage() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | Role>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | UserStatus>('ALL');
-  const [tenantFilter, setTenantFilter] = useState<string>(searchParams.get('tenant') ?? 'ALL');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  // Data
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
-
-  // Pagination
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [tenantFilter, setTenantFilter] = useState('');
 
-  // Row menu
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Modals State
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
-  // Modals
-  const [statusTarget, setStatusTarget] = useState<AdminUser | null>(null);
-  const [nextStatus, setNextStatus] = useState<UserStatus>('ACTIVE');
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-
-  const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
-  const [newRole, setNewRole] = useState<Role>('STAFF');
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
-
-  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // ───────────────────────────────────────────────
-  // Debounce
-  // ───────────────────────────────────────────────
+  // Debounce Search
   useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
       setPage(0);
-    }, 350);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Sync tenant filter to URL
-  useEffect(() => {
-    const next = new URLSearchParams(searchParams);
-    if (tenantFilter !== 'ALL') next.set('tenant', tenantFilter);
-    else next.delete('tenant');
-    setSearchParams(next, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantFilter]);
+  // Fetch Tenants for Filter
+  const { data: tenantsData } = useQuery({
+    queryKey: ['admin-tenants-options'],
+    queryFn: () => adminTenantsApi.listForSelection(),
+    staleTime: 1000 * 60 * 10,
+  });
 
-  // ───────────────────────────────────────────────
-  // Load tenants for filter
-  // ───────────────────────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch('/api/v1/admin/tenants?size=100', {
-          headers: authHeaders(),
-        });
-        if (res.ok) {
-          const result = await res.json();
-          const data = result.data ?? result;
-          setTenants(data.content ?? []);
-        }
-      } catch {
-        // ignore
-      }
-    };
-    load();
-  }, []);
+  // Fetch Users
+  const {
+    data: usersData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
+    queryKey: ['admin-users', page, debouncedSearch, roleFilter, statusFilter, tenantFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: PAGE_SIZE.toString(),
+      });
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (roleFilter) params.append('role', roleFilter);
+      if (statusFilter) params.append('status', statusFilter);
+      if (tenantFilter) params.append('tenantId', tenantFilter);
 
-  // ───────────────────────────────────────────────
-  // Load users
-  // ───────────────────────────────────────────────
-  const load = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (opts?.silent) setIsRefreshing(true);
-      else setIsLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams({
-          page: String(page),
-          size: String(PAGE_SIZE),
-        });
-        if (debouncedSearch) params.set('search', debouncedSearch);
-        if (roleFilter !== 'ALL') params.set('role', roleFilter);
-        if (statusFilter !== 'ALL') params.set('status', statusFilter);
-        if (tenantFilter !== 'ALL') params.set('tenantId', tenantFilter);
-        const res = await fetch(`/api/v1/admin/users?${params.toString()}`, {
-          headers: authHeaders(),
-        });
-        if (!res.ok) throw new Error('Failed to load users');
-        const result = await res.json();
-        const data: ListResponse & { total?: number; size?: number } = result.data ?? result;
-        setUsers((data.content ?? []).map((user) => ({
-          ...user,
-          id: user.firebaseUid,
-          hasRoleClaim: true,
-          hasUserRecord: true,
-          hasTenant: Boolean(user.tenantId),
-          hasProviderLink: Boolean(user.providerId),
-        })));
-        setTotalPages(data.totalPages ?? Math.ceil((data.total ?? 0) / (data.size || PAGE_SIZE)));
-        setTotalElements(data.totalElements ?? data.total ?? 0);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
+      const response = await api.get(`/api/v1/admin/users?${params.toString()}`);
+      const body = response.data as { data?: PaginatedResponse<AdminUser>; content?: AdminUser[] };
+      return normalizePage((body.data ?? body) as PaginatedResponse<AdminUser>);
     },
-    [page, debouncedSearch, roleFilter, statusFilter, tenantFilter]
-  );
+  });
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const users = usersData?.content || [];
+  const totalUsers = usersData?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
 
-  // Close menu on outside click
-  useEffect(() => {
-    if (!openMenuId) return;
-    const close = () => setOpenMenuId(null);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, [openMenuId]);
+  // ── Status Toggle Mutation ──
+  const statusMutation = useMutation({
+    mutationFn: ({ user, status }: { user: AdminUser; status: 'ACTIVE' | 'SUSPENDED' }) =>
+      api.patch(`/api/v1/admin/users/${encodeURIComponent(user.firebaseUid)}/status`, { status }, {
+        params: user.tenantId ? { tenantId: user.tenantId } : undefined,
+      }),
+    onSuccess: () => {
+      toast.success('User status updated successfully.');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setIsStatusModalOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (err: unknown) => {
+      toast.error(errorMessage(err, 'Failed to update user status.'));
+    },
+  });
 
-  // ───────────────────────────────────────────────
-  // Actions
-  // ───────────────────────────────────────────────
-  const changeStatus = async () => {
-    if (!statusTarget) return;
-    setIsUpdatingStatus(true);
-    try {
-      const tenantQuery = statusTarget.tenantId
-        ? `?tenantId=${encodeURIComponent(statusTarget.tenantId)}`
-        : '';
-      const res = await fetch(
-        `/api/v1/admin/users/${encodeURIComponent(statusTarget.firebaseUid)}/status${tenantQuery}`,
-        {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: JSON.stringify({ status: nextStatus }),
-        }
-      );
-      if (!res.ok) throw new Error('Status update failed');
-      toast.success(`${statusTarget.fullName} is now ${nextStatus}`);
-      setStatusTarget(null);
-      load({ silent: true });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Status update failed');
-    } finally {
-      setIsUpdatingStatus(false);
-    }
+  // ── Role Change Mutation ──
+  const roleForm = useForm<RoleFormValues>({
+    resolver: zodResolver(roleSchema),
+  });
+
+  const roleMutation = useMutation({
+    mutationFn: (values: RoleFormValues) => {
+      if (!selectedUser) throw new Error('Select a user first');
+      if (!selectedUser.tenantId) throw new Error('Platform role changes require an explicit tenant assignment');
+      return api.patch(`/api/v1/admin/users/${encodeURIComponent(selectedUser.firebaseUid)}/role`, {
+        ...values,
+        tenantId: selectedUser.tenantId,
+        permissions: selectedUser.permissions ?? [],
+      });
+    },
+    onSuccess: () => {
+      toast.success('User role updated successfully.');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setIsRoleModalOpen(false);
+      setSelectedUser(null);
+      roleForm.reset();
+    },
+    onError: (err: unknown) => {
+      toast.error(errorMessage(err, 'Failed to update user role.'));
+    },
+  });
+
+  const handleOpenRoleModal = (user: AdminUser) => {
+    setSelectedUser(user);
+    if (user.role === 'ADMIN') roleForm.reset();
+    else roleForm.setValue('role', user.role as RoleFormValues['role']);
+    setIsRoleModalOpen(true);
   };
 
-  const changeRole = async () => {
-    if (!roleTarget) return;
-    setIsUpdatingRole(true);
-    try {
-      const tenantId = roleTarget.tenantId;
-      const tenantQuery = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
-      const detailRes = await fetch(
-        `/api/v1/admin/users/${encodeURIComponent(roleTarget.firebaseUid)}${tenantQuery}`,
-        { headers: authHeaders() }
-      );
-      if (!detailRes.ok) throw new Error('Could not load user role details');
-      const detailEnvelope = await detailRes.json();
-      const details = detailEnvelope.data ?? detailEnvelope;
-      const res = await fetch(
-        `/api/v1/admin/users/${encodeURIComponent(roleTarget.firebaseUid)}/role`,
-        {
-          method: 'PATCH',
-          headers: authHeaders(),
-          body: JSON.stringify({ role: newRole, tenantId, permissions: details.permissions ?? [] }),
-        }
-      );
-      if (!res.ok) throw new Error('Role change failed');
-      toast.success(`${roleTarget.fullName} is now ${newRole.replace(/_/g, ' ')}`);
-      setRoleTarget(null);
-      load({ silent: true });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Role change failed');
-    } finally {
-      setIsUpdatingRole(false);
-    }
+  const handleOpenStatusModal = (user: AdminUser) => {
+    setSelectedUser(user);
+    setIsStatusModalOpen(true);
   };
 
-  const deleteUser = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      const tenantQuery = deleteTarget.tenantId
-        ? `?tenantId=${encodeURIComponent(deleteTarget.tenantId)}`
-        : '';
-      const res = await fetch(
-        `/api/v1/admin/users/${encodeURIComponent(deleteTarget.firebaseUid)}${tenantQuery}`,
-        { method: 'DELETE', headers: authHeaders() }
-      );
-      if (!res.ok) throw new Error('Delete failed');
-      toast.success(`${deleteTarget.fullName} deleted`);
-      setDeleteTarget(null);
-      load({ silent: true });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const sendPasswordReset = async (user: AdminUser) => {
-    try {
-      const res = await fetch(
-        `/api/v1/admin/firebase/users/${user.firebaseUid}/send-password-reset`,
-        { method: 'POST', headers: authHeaders() }
-      );
-      if (!res.ok) throw new Error('Failed');
-      toast.success(`Password reset email sent to ${user.email}`);
-    } catch {
-      toast.error('Failed to send reset email');
-    }
-  };
-
-  const sendVerification = async (user: AdminUser) => {
-    try {
-      const res = await fetch(
-        `/api/v1/admin/firebase/users/${user.firebaseUid}/send-verification`,
-        { method: 'POST', headers: authHeaders() }
-      );
-      if (!res.ok) throw new Error('Failed');
-      toast.success(`Verification email sent to ${user.email}`);
-    } catch {
-      toast.error('Failed to send verification email');
-    }
-  };
-
-  const exportCsv = () => {
+  const handleExportCsv = useCallback(() => {
     if (users.length === 0) return;
-    const headers = [
-      'ID',
-      'Email',
-      'Name',
-      'Role',
-      'Status',
-      'Tenant',
-      'Provider',
-      'Verified',
-      'MFA',
-      'Last login',
-      'Created',
-    ];
+    const headers = ['Firebase UID', 'Name', 'Email', 'Role', 'Status', 'Tenant', 'Joined'];
     const rows = users.map((u) => [
-      u.id,
-      u.email,
+      u.firebaseUid,
       u.fullName,
+      u.email,
       u.role,
       u.status,
-      u.tenantName ?? '',
-      u.providerName ?? '',
-      u.emailVerified ? 'yes' : 'no',
-      u.mfaEnabled ? 'yes' : 'no',
-      u.lastLogin ?? 'never',
-      u.createdAt,
+      u.tenantName || 'Platform',
+      new Date(u.createdAt).toLocaleDateString(),
     ]);
-    const csv = [headers, ...rows]
-      .map((r) => r.map((c) => `"${c}"`).join(','))
-      .join('\n');
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `caresync-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
     URL.revokeObjectURL(url);
+  }, [users]);
+
+  // ───────────────────────────────────────────────
+  // Render Helpers
+  // ───────────────────────────────────────────────
+  const RoleBadge = ({ role }: { role: string }) => {
+    const meta = ROLE_BADGES[role] || ROLE_BADGES.STAFF;
+    const Icon = meta.icon;
+    return (
+      <Badge variant="outline" className={`${meta.color} border-none flex items-center gap-1 w-fit`}>
+        <Icon className="h-3 w-3" />
+        {meta.label}
+      </Badge>
+    );
   };
 
-  // ───────────────────────────────────────────────
-  // Derived
-  // ───────────────────────────────────────────────
-  const activeFilterCount = useMemo(() => {
-    let n = 0;
-    if (roleFilter !== 'ALL') n++;
-    if (statusFilter !== 'ALL') n++;
-    if (tenantFilter !== 'ALL') n++;
-    return n;
-  }, [roleFilter, statusFilter, tenantFilter]);
+  const StatusBadge = ({ status }: { status: string }) => (
+    <Badge variant="outline" className={`${STATUS_BADGES[status]} border-none`}>
+      {status}
+    </Badge>
+  );
 
-  // ───────────────────────────────────────────────
-  // Render
-  // ───────────────────────────────────────────────
+  if (isError) {
+    return (
+      <Alert variant="destructive" className="m-6">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error Loading Users</AlertTitle>
+        <AlertDescription>
+          {error?.message || 'Could not retrieve users. Please try again.'}
+        </AlertDescription>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+          <RefreshCw className="mr-2 h-4 w-4" /> Retry
+        </Button>
+      </Alert>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="container mx-auto max-w-7xl py-8 space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Users className="w-6 h-6 text-indigo-600" />
-              All Users
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Manage every user across all tenants. Role assignment and provisioning is
-              audited.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => load({ silent: true })}
-              disabled={isRefreshing}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-            <button
-              onClick={exportCsv}
-              disabled={users.length === 0}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </button>
-            <button
-              onClick={() => navigate('/admin/super/users/create')}
-              className="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Provision User
-            </button>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Users className="h-8 w-8 text-primary" />
+            Platform User Directory
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage all accounts, roles, and access permissions across every tenant.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={handleExportCsv} disabled={users.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+          <Button asChild>
+            <Link to="/admin/super/users/create">
+              <Plus className="mr-2 h-4 w-4" /> Provision User
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="max-w-7xl mx-auto w-full px-6 py-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by email, name, or Firebase UID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100"
-              aria-label="Clear"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          )}
-        </div>
-        <button
-          onClick={() => setIsFilterOpen((v) => !v)}
-          className={`inline-flex items-center px-4 py-2 border rounded-md text-sm font-medium transition-colors ${
-            isFilterOpen || activeFilterCount > 0
-              ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Filter className="w-4 h-4 mr-2" />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-indigo-600 text-white">
-              {activeFilterCount}
-            </span>
-          )}
-          <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-
-      {/* Filters */}
-      {isFilterOpen && (
-        <div className="max-w-7xl mx-auto w-full px-6 pb-4">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
-              <select
-                value={roleFilter}
-                onChange={(e) => {
-                  setRoleFilter(e.target.value as 'ALL' | Role);
-                  setPage(0);
-                }}
-                className="w-full rounded-md border-gray-300 text-sm py-2 px-3 border"
-              >
-                <option value="ALL">All roles</option>
-                {Object.entries(ROLE_META)
-                  .filter(([key]) => !['SUPER_ADMIN', 'PROVIDER', 'CLINICIAN', 'PATIENT'].includes(key))
-                  .map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v.label}
-                  </option>
-                  ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value as 'ALL' | UserStatus);
-                  setPage(0);
-                }}
-                className="w-full rounded-md border-gray-300 text-sm py-2 px-3 border"
-              >
-                <option value="ALL">All statuses</option>
-                {Object.entries(STATUS_META).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Tenant</label>
-              <select
-                value={tenantFilter}
-                onChange={(e) => {
-                  setTenantFilter(e.target.value);
-                  setPage(0);
-                }}
-                className="w-full rounded-md border-gray-300 text-sm py-2 px-3 border"
-              >
-                <option value="ALL">All tenants</option>
-                {tenants.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2 lg:col-span-4 flex items-center justify-between pt-2 border-t border-gray-200">
-              <span className="text-xs text-gray-500">Filter by role, status, and tenant.</span>
-              <button
-                onClick={() => {
-                  setRoleFilter('ALL');
-                  setStatusFilter('ALL');
-                  setTenantFilter('ALL');
-                  setPage(0);
-                }}
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-              >
-                Reset filters
-              </button>
-            </div>
+      {/* Filters Toolbar */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or UID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
           </div>
-        </div>
-      )}
+          <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v === 'ALL' ? '' : v); setPage(0); }}>
+            <SelectTrigger><SelectValue placeholder="All Roles" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Roles</SelectItem>
+              {Object.keys(ROLE_BADGES).map((r) => (
+                <SelectItem key={r} value={r}>{ROLE_BADGES[r].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v === 'ALL' ? '' : v); setPage(0); }}>
+            <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="SUSPENDED">Suspended</SelectItem>
+              <SelectItem value="DELETED">Deleted</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={tenantFilter} onValueChange={(v) => { setTenantFilter(v === 'ALL' ? '' : v); setPage(0); }}>
+            <SelectTrigger><SelectValue placeholder="All Tenants" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Tenants</SelectItem>
+              {tenantsData?.content.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
-      {/* Table */}
-      <div className="max-w-7xl mx-auto w-full px-6 pb-12 flex-1">
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+      {/* Users Table */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Users ({totalUsers})</CardTitle>
+          <CardDescription>Manage individual user accounts and their platform access.</CardDescription>
+        </CardHeader>
+        <CardContent>
           {isLoading ? (
-            <div className="p-16 flex flex-col items-center text-gray-500">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
-              <p className="text-sm">Loading users...</p>
-            </div>
-          ) : error ? (
-            <div className="p-16 text-center">
-              <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-              <p className="text-sm text-gray-700">{error}</p>
-              <button
-                onClick={() => load()}
-                className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" /> Retry
-              </button>
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </div>
           ) : users.length === 0 ? (
-            <div className="p-16 text-center">
-              <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-gray-900">No users found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {debouncedSearch || activeFilterCount > 0
-                  ? 'Try adjusting your filters.'
-                  : 'Provision the first user to get started.'}
-              </p>
-              <button
-                onClick={() => navigate('/admin/super/users/create')}
-                className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-              >
-                <UserPlus className="w-4 h-4 mr-2" /> Provision User
-              </button>
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-medium">No users found</h3>
+              <p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tenant
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Health
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last login
-                    </th>
-                    <th className="relative px-5 py-3">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((u) => {
-                    const roleMeta = ROLE_META[u.role] ?? ROLE_META.STAFF;
-                    const RoleIcon = roleMeta.icon;
-                    const statusMeta = STATUS_META[u.status] ?? STATUS_META.ACTIVE;
-                    const StatusIcon = statusMeta.icon;
-                    const incomplete =
-                      !u.hasRoleClaim ||
-                      !u.hasUserRecord ||
-                      (!u.tenantId && roleMeta.scope === 'TENANT') ||
-                      (!u.providerId &&
-                        (u.role === 'PROVIDER' || u.role === 'CLINICIAN'));
-
-                    return (
-                      <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                                u.emailVerified
-                                  ? 'bg-indigo-100 text-indigo-700'
-                                  : 'bg-amber-100 text-amber-700'
-                              }`}
-                            >
-                              {u.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
-                                {u.fullName}
-                                {!u.emailVerified && (
-                                  <span
-                                    className="inline-flex items-center gap-1 text-[10px] uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold"
-                                    title="Email not verified"
-                                  >
-                                    <Mail className="w-2.5 h-2.5" />
-                                    unverified
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {u.email}
-                              </p>
-                            </div>
+            <div className="overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.firebaseUid} className="hover:bg-muted/30">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                            {(user.fullName || user.email).charAt(0).toUpperCase()}
                           </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded ${roleMeta.badge}`}
-                          >
-                            <RoleIcon className="w-3 h-3" />
-                            {roleMeta.label}
-                          </span>
-                          {u.providerName && (
-                            <p className="text-[11px] text-gray-500 mt-1 truncate max-w-[150px]">
-                              ↳ {u.providerName}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-5 py-3">
-                          {u.tenantName ? (
-                            <span className="text-xs text-gray-700 flex items-center gap-1">
-                              <Building2 className="w-3 h-3 text-gray-400" />
-                              {u.tenantName}
-                            </span>
-                          ) : roleMeta.scope === 'PLATFORM' ? (
-                            <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
-                              Platform
-                            </span>
-                          ) : (
-                            <span className="text-xs text-red-600 flex items-center gap-1">
-                              <XCircle className="w-3 h-3" /> None
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${statusMeta.cls}`}
-                          >
-                            <StatusIcon className="w-3 h-3" />
-                            {statusMeta.label}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3">
-                          {incomplete ? (
-                            <button
-                              onClick={() =>
-                                navigate(
-                                  `/admin/super/registration/provision?email=${encodeURIComponent(
-                                    u.email
-                                  )}&firebaseUid=${u.firebaseUid}`
-                                )
-                              }
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded"
-                            >
-                              <AlertCircle className="w-3 h-3" />
-                              Incomplete
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                              <CheckCircle2 className="w-3 h-3" />
-                              OK
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
-                          {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="relative inline-block">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMenuId(openMenuId === u.id ? null : u.id);
-                              }}
-                              className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                            {openMenuId === u.id && (
-                              <div
-                                className="absolute right-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-20"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MenuItem
-                                  icon={Eye}
-                                  label="View details"
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    navigate(`/admin/super/users/${u.id}`);
-                                  }}
-                                />
-                                <MenuItem
-                                  icon={Edit2}
-                                  label="Edit profile"
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    navigate(`/admin/super/users/${u.id}?edit=1`);
-                                  }}
-                                />
-                                <MenuItem
-                                  icon={Shield}
-                                  label="Change role"
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    setRoleTarget(u);
-                                    setNewRole(u.role);
-                                  }}
-                                />
-                                <MenuItem
-                                  icon={u.status === 'ACTIVE' ? Ban : Power}
-                                  label={u.status === 'ACTIVE' ? 'Suspend account' : 'Activate account'}
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    setStatusTarget(u);
-                                    setNextStatus(u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
-                                  }}
-                                />
-                                <div className="my-1 border-t border-gray-100" />
-                                {!u.emailVerified && (
-                                  <MenuItem
-                                    icon={Send}
-                                    label="Resend verification"
-                                    onClick={() => {
-                                      setOpenMenuId(null);
-                                      sendVerification(u);
-                                    }}
-                                  />
-                                )}
-                                <MenuItem
-                                  icon={KeyRound}
-                                  label="Send password reset"
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    sendPasswordReset(u);
-                                  }}
-                                />
-                                {incomplete && (
-                                  <MenuItem
-                                    icon={Fingerprint}
-                                    label="Open provisioning"
-                                    onClick={() => {
-                                      setOpenMenuId(null);
-                                      navigate(
-                                        `/admin/super/registration/provision?email=${encodeURIComponent(
-                                          u.email
-                                        )}&firebaseUid=${u.firebaseUid}`
-                                      );
-                                    }}
-                                  />
-                                )}
-                                <div className="my-1 border-t border-gray-100" />
-                                <button
-                                  onClick={() => {
-                                    setOpenMenuId(null);
-                                    setDeleteTarget(u);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  Delete user
-                                </button>
-                              </div>
-                            )}
+                          <div>
+                            <p className="font-medium text-sm">{user.fullName || 'Unnamed User'}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </TableCell>
+                      <TableCell><RoleBadge role={user.role} /></TableCell>
+                      <TableCell>
+                        {user.tenantName ? (
+                          <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Building className="h-3 w-3" /> {user.tenantName}
+                          </span>
+                        ) : (
+                          <span className="text-xs italic text-muted-foreground">Platform Level</span>
+                        )}
+                      </TableCell>
+                      <TableCell><StatusBadge status={user.status} /></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link to={`/admin/super/users/${user.firebaseUid}`}>
+                                <UserCog className="mr-2 h-4 w-4" /> View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenRoleModal(user)}>
+                              <Shield className="mr-2 h-4 w-4" /> Change Role
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleOpenStatusModal(user)}
+                              className={user.status === 'ACTIVE' ? 'text-destructive' : 'text-emerald-600'}
+                            >
+                              {user.status === 'ACTIVE' ? (
+                                <><Ban className="mr-2 h-4 w-4" /> Suspend Account</>
+                              ) : (
+                                <><CheckCircle className="mr-2 h-4 w-4" /> Activate Account</>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
-        </div>
 
-        {/* Pagination */}
-        {!isLoading && !error && users.length > 0 && (
-          <div className="mt-4 bg-white px-4 py-3 flex items-center justify-between rounded-lg shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-700">
-              Page <span className="font-semibold">{page + 1}</span> of{' '}
-              <span className="font-semibold">{totalPages || 1}</span>
-              <span className="ml-2 text-gray-500">({totalElements} total)</span>
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Role change modal ── */}
-      {roleTarget && (
-        <Modal onClose={() => !isUpdatingRole && setRoleTarget(null)}>
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-6 h-6 text-indigo-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">Change user role</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Updating role for <strong>{roleTarget.fullName}</strong>. This immediately
-                changes their Firebase role claim and permissions.
+          {/* Pagination */}
+          {!isLoading && users.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {page + 1} of {totalPages} • {totalUsers} total users
               </p>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  New role
-                </label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as Role)}
-                  className="w-full rounded-md border-gray-300 text-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500"
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0 || isFetching}
                 >
-                  {Object.entries(ROLE_META).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v.label}
-                    </option>
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1 || isFetching}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Role Change Modal ── */}
+      <Dialog open={isRoleModalOpen} onOpenChange={setIsRoleModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change User Role</DialogTitle>
+            <DialogDescription>
+              Update the role for <strong>{selectedUser?.fullName || selectedUser?.email}</strong>.
+              This will immediately alter their access permissions.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={roleForm.handleSubmit((v) => roleMutation.mutate(v))} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">New Role</Label>
+              {selectedUser?.role === 'ADMIN' && <p className="text-sm text-amber-700">Legacy ADMIN access is blocked pending review. Choose the verified role and tenant for this account.</p>}
+              <Select
+                value={roleForm.watch('role')}
+                onValueChange={(v) => roleForm.setValue('role', v as RoleFormValues['role'])}
+              >
+                <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
+                <SelectContent>
+                  {Object.keys(ROLE_BADGES).map((r) => (
+                    <SelectItem key={r} value={r}>{ROLE_BADGES[r].label}</SelectItem>
                   ))}
-                </select>
-                {newRole !== roleTarget.role && (
-                  <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                    Changing roles requires the user to log out and back in to refresh their
-                    claims. Consider notifying them.
-                  </div>
-                )}
-              </div>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <button
-              onClick={() => setRoleTarget(null)}
-              disabled={isUpdatingRole}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={changeRole}
-              disabled={isUpdatingRole || newRole === roleTarget.role}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {isUpdatingRole && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Save changes
-            </button>
-          </div>
-        </Modal>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsRoleModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={roleMutation.isPending}>
+                {roleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {/* ── Status modal ── */}
-      {statusTarget && (
-        <Modal onClose={() => !isUpdatingStatus && setStatusTarget(null)}>
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <Power className="w-6 h-6 text-amber-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">Change account status</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Updating status for <strong>{statusTarget.fullName}</strong>.
-              </p>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  New status
-                </label>
-                <select
-                  value={nextStatus}
-                  onChange={(e) => setNextStatus(e.target.value as UserStatus)}
-                  className="w-full rounded-md border-gray-300 text-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="ACTIVE">ACTIVE — full access</option>
-                  <option value="SUSPENDED">SUSPENDED — login blocked</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <button
-              onClick={() => setStatusTarget(null)}
-              disabled={isUpdatingStatus}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
+      {/* ── Status Confirmation Modal ── */}
+      <Dialog open={isStatusModalOpen} onOpenChange={setIsStatusModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedUser?.status === 'ACTIVE' ? 'Suspend' : 'Activate'} Account
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {selectedUser?.status === 'ACTIVE' ? 'suspend' : 'activate'}{' '}
+              <strong>{selectedUser?.fullName || selectedUser?.email}</strong>?
+              {selectedUser?.status === 'ACTIVE' && (
+                <span className="block mt-2 text-destructive">
+                  This user will immediately lose access to the platform.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStatusModalOpen(false)}>
               Cancel
-            </button>
-            <button
-              onClick={changeStatus}
-              disabled={isUpdatingStatus || nextStatus === statusTarget.status}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+            </Button>
+            <Button
+              variant={selectedUser?.status === 'ACTIVE' ? 'destructive' : 'default'}
+              onClick={() => {
+                if (!selectedUser) return;
+                statusMutation.mutate({
+                  user: selectedUser,
+                  status: selectedUser.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE',
+                });
+              }}
+              disabled={statusMutation.isPending}
             >
-              {isUpdatingStatus && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {statusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── Delete modal ── */}
-      {deleteTarget && (
-        <Modal onClose={() => !isDeleting && setDeleteTarget(null)}>
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <Trash2 className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Delete user account</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Permanently delete <strong>{deleteTarget.fullName}</strong> ({deleteTarget.email})?
-                This removes their Firebase account, CareSync user record, provider link and all
-                sessions. Audit history is preserved.
-              </p>
-              <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800 flex items-start gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                Consider <strong>SUSPENDING</strong> instead — reversible and preserves data.
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <button
-              onClick={() => setDeleteTarget(null)}
-              disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={deleteUser}
-              disabled={isDeleting}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-            >
-              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Delete permanently
-            </button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// Small components
-// ─────────────────────────────────────────────────────────────
-function MenuItem({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: typeof Eye;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-    </button>
-  );
-}
-
-function Modal({
-  onClose,
-  children,
-}: {
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/60" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        {children}
-      </div>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

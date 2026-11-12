@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import { FirebaseError } from 'firebase/app';
 import {
   ArrowRight,
   Eye,
@@ -19,8 +18,8 @@ import {
   signInWithPopup,
   sendEmailVerification,
 } from 'firebase/auth';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { auth, parseFirebaseAuthError } from '@/lib/firebase';
+import { Link, useNavigate } from 'react-router-dom';
+import { auth, getFirebaseAuthErrorCode, parseFirebaseAuthError } from '@/lib/firebase';
 import { readAuthClaims } from '@/lib/auth-claims';
 import { forceRefreshClaims, syncCurrentUser } from '@/api/auth-sync';
 
@@ -40,19 +39,20 @@ class AuthPendingApprovalError extends Error {
 
 function getLoginError(error: unknown): string {
   if (error instanceof AuthClaimsNotReadyError) return error.message;
-  if (!(error instanceof FirebaseError)) return 'We could not sign you in. Please try again.';
-  if (error.code === 'auth/invalid-email') return 'Enter the complete email address linked to your account.';
-  if (['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential'].includes(error.code)) {
+  const code = getFirebaseAuthErrorCode(error);
+  if (!code) return 'We could not sign you in. Please try again.';
+  if (code === 'auth/invalid-email') return 'Enter the complete email address linked to your account.';
+  if (['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential'].includes(code)) {
     return 'The email address or password is incorrect.';
   }
-  if (['auth/invalid-api-key', 'auth/api-key-not-valid'].includes(error.code)) {
+  if (['auth/invalid-api-key', 'auth/api-key-not-valid'].includes(code)) {
     return 'Sign-in is temporarily unavailable because the Firebase app is misconfigured. Please contact support.';
   }
-  if (error.code === 'auth/network-request-failed') return 'We could not reach Firebase. Check your connection and try again.';
-  if (error.code === 'auth/too-many-requests') return 'Too many attempts. Please wait or reset your password.';
-  if (error.code === 'auth/user-disabled') return 'This account has been suspended. Contact your administrator.';
-  if (error.code === 'auth/popup-closed-by-user') return 'The Google sign-in window was closed before completion.';
-  if (error.code === 'auth/operation-not-allowed') return 'This sign-in method is not enabled. Contact your administrator.';
+  if (code === 'auth/network-request-failed') return 'We could not reach Firebase. Check your connection and try again.';
+  if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait or reset your password.';
+  if (code === 'auth/user-disabled') return 'This account has been suspended. Contact your administrator.';
+  if (code === 'auth/popup-closed-by-user') return 'The Google sign-in window was closed before completion.';
+  if (code === 'auth/operation-not-allowed') return 'This sign-in method is not enabled. Contact your administrator.';
   return 'We could not sign you in. Please try again.';
 }
 
@@ -74,7 +74,6 @@ async function resolveProvisionedClaims(): Promise<Record<string, unknown> | nul
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -82,9 +81,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const returnTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-
-  const handleSuccess = () => navigate(returnTo && returnTo !== '/auth/login' ? returnTo : '/dashboard', { replace: true });
+  const handleSuccess = () => navigate('/dashboard', { replace: true });
 
   const handleEmailLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -151,7 +148,7 @@ export default function LoginPage() {
     } catch (loginError) {
       if (loginError instanceof AuthPendingApprovalError) {
         navigate('/auth/pending-approval', { replace: true });
-      } else if (loginError instanceof FirebaseError && loginError.code === 'auth/popup-closed-by-user') {
+      } else if (getFirebaseAuthErrorCode(loginError) === 'auth/popup-closed-by-user') {
         setError('The Google sign-in window was closed before completion.');
       } else {
         setError(getLoginError(loginError));

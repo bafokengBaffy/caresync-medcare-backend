@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { errorMessage } from '@/lib/error-message';
 import {
   Users,
   Search,
@@ -65,8 +66,8 @@ const UserListPage = () => {
       
       setUsers(data.content || []);
       setTotalPages(data.totalPages || 0);
-    } catch (err: any) {
-      setError(err.message || 'Error loading users');
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Error loading users'));
     } finally {
       setIsLoading(false);
     }
@@ -88,11 +89,11 @@ const UserListPage = () => {
       });
       if (!response.ok) throw new Error('Failed to update role');
       
-      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, role: newRole as any } : u));
+      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, role: newRole as User['role'] } : u));
       setActionType(null);
       setSelectedUser(null);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(errorMessage(err, 'Failed to update role'));
     } finally {
       setIsUpdating(false);
     }
@@ -110,9 +111,9 @@ const UserListPage = () => {
       });
       if (!response.ok) throw new Error('Failed to update status');
       
-      setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus as any } : u));
-    } catch (err: any) {
-      alert(err.message);
+      setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus as User['status'] } : u));
+    } catch (err: unknown) {
+      alert(errorMessage(err, 'Failed to update status'));
     }
   };
 
@@ -121,21 +122,21 @@ const UserListPage = () => {
       case 'SUPER_ADMIN': return <ShieldAlert className="w-4 h-4 text-purple-600" />;
       case 'TENANT_ADMIN': return <ShieldCheck className="w-4 h-4 text-blue-600" />;
       case 'PROVIDER': return <Shield className="w-4 h-4 text-emerald-600" />;
-      default: return <Users className="w-4 h-4 text-gray-500" />;
+      default: return <Users className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-6">
+      <div className="bg-white border-b border-gray-200 px-6 py-6 dark:bg-slate-900 dark:border-slate-700">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 dark:text-slate-50">
               <Users className="w-6 h-6 text-indigo-600" />
               Global User Directory
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               Manage user identities, enforce RBAC, and handle account suspensions.
             </p>
           </div>
@@ -144,22 +145,22 @@ const UserListPage = () => {
 
       <div className="max-w-7xl mx-auto w-full px-6 py-6 flex-1 flex flex-col gap-4">
         {/* Filters Toolbar */}
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-3">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-3 dark:bg-slate-900 dark:border-slate-700">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-300" />
             <input
               type="text"
               placeholder="Search users by name or email..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-600"
             />
           </div>
           <div className="flex gap-3">
             <select
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}
-              className="rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 pl-3 pr-8 border"
+              className="rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 pl-3 pr-8 border dark:border-slate-600"
             >
               <option value="ALL">All Roles</option>
               <option value="SUPER_ADMIN">Super Admin</option>
@@ -170,7 +171,7 @@ const UserListPage = () => {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-              className="rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 pl-3 pr-8 border"
+              className="rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 pl-3 pr-8 border dark:border-slate-600"
             >
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE">Active</option>
@@ -181,52 +182,52 @@ const UserListPage = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow border border-gray-200 flex-1">
+        <div className="bg-white rounded-lg shadow border border-gray-200 flex-1 dark:bg-slate-900 dark:border-slate-700">
           {isLoading ? (
             <div className="p-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
           ) : error ? (
             <div className="p-16 text-center text-red-500"><AlertCircle className="mx-auto w-8 h-8 mb-2" />{error}</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-950">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Profile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role & Access</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-slate-400">User Profile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-slate-400">Role & Access</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-slate-400">Tenant</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-slate-400">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-slate-400">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-200 dark:bg-slate-900 dark:divide-slate-700">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-950">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                            <div className="text-sm text-gray-500 flex items-center gap-1">
+                            <div className="text-sm font-medium text-gray-900 dark:text-slate-50">{user.name}</div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1 dark:text-slate-400">
                               <Mail className="w-3 h-3" /> {user.email}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-sm text-gray-900 font-medium">
+                        <div className="flex items-center gap-2 text-sm text-gray-900 font-medium dark:text-slate-50">
                           {getRoleIcon(user.role)}
                           {user.role.replace('_', ' ')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                         {user.tenantName ? (
                           <span className="flex items-center gap-1">
                             <Building className="w-3 h-3" /> {user.tenantName}
                           </span>
                         ) : (
-                          <span className="text-gray-400 italic">System Level</span>
+                          <span className="text-gray-400 italic dark:text-slate-300">System Level</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -241,7 +242,7 @@ const UserListPage = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => { setSelectedUser(user); setActionType('ROLE'); setNewRole(user.role); }}
-                            className="text-gray-400 hover:text-blue-600 p-1"
+                            className="text-gray-400 hover:text-blue-600 p-1 dark:text-slate-300"
                             title="Change Role"
                           >
                             <Shield className="w-5 h-5" />
@@ -265,11 +266,11 @@ const UserListPage = () => {
 
         {/* Pagination */}
         {!isLoading && !error && users.length > 0 && (
-           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow-sm border">
-           <p className="text-sm text-gray-700">Page <span className="font-medium">{page + 1}</span> of <span className="font-medium">{totalPages || 1}</span></p>
+           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow-sm border dark:bg-slate-900 dark:border-slate-700">
+           <p className="text-sm text-gray-700 dark:text-slate-200">Page <span className="font-medium">{page + 1}</span> of <span className="font-medium">{totalPages || 1}</span></p>
            <div className="flex gap-2">
-             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">Previous</button>
-             <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">Next</button>
+             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 dark:hover:bg-slate-950">Previous</button>
+             <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 dark:hover:bg-slate-950">Next</button>
            </div>
          </div>
         )}
@@ -277,16 +278,16 @@ const UserListPage = () => {
 
       {/* Role Change Modal */}
       {actionType === 'ROLE' && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Change User Role</h3>
-            <p className="text-sm text-gray-500 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75 dark:bg-slate-500">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl dark:bg-slate-900">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 dark:text-slate-50">Change User Role</h3>
+            <p className="text-sm text-gray-500 mb-4 dark:text-slate-400">
               Updating role for <strong>{selectedUser.name}</strong>. This will immediately alter their access permissions across the platform.
             </p>
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border mb-6"
+              className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border mb-6 dark:border-slate-600"
             >
               <option value="SUPER_ADMIN">Super Admin</option>
               <option value="TENANT_ADMIN">Tenant Admin</option>
@@ -294,7 +295,7 @@ const UserListPage = () => {
               <option value="PATIENT">Patient</option>
             </select>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setActionType(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setActionType(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-600 dark:hover:bg-slate-950">Cancel</button>
               <button onClick={handleRoleChangeSubmit} disabled={isUpdating} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 flex items-center">
                 {isUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save Changes
               </button>

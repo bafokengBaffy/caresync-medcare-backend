@@ -35,7 +35,7 @@ class JwtFilterTest {
         UUID tenantId = UUID.randomUUID();
         AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
         VerifiedIdentity verifiedIdentity =
-            new VerifiedIdentity("verified-user", tenantId.toString(), "ADMIN", "CARDIOLOGY");
+            new VerifiedIdentity("verified-user", tenantId.toString(), "TENANT_ADMIN", "CARDIOLOGY");
         JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token -> {
             assertEquals("valid-token", token);
             return verifiedIdentity;
@@ -57,7 +57,7 @@ class JwtFilterTest {
         assertNotNull(forwarded.get());
         assertEquals(tenantId.toString(), forwarded.get().getRequest().getHeaders().getFirst("X-Tenant-Id"));
         assertEquals("verified-user", forwarded.get().getRequest().getHeaders().getFirst("X-User-Id"));
-        assertEquals("ADMIN", forwarded.get().getRequest().getHeaders().getFirst("X-Role"));
+        assertEquals("TENANT_ADMIN", forwarded.get().getRequest().getHeaders().getFirst("X-Role"));
         assertEquals("CARDIOLOGY", forwarded.get().getRequest().getHeaders().getFirst("X-Specialty"));
         assertSame(
             verifiedIdentity,
@@ -207,7 +207,7 @@ class JwtFilterTest {
     }
 
     @Test
-    void allowsVerifiedSuperAdminsToAccessPayroll() {
+    void deniesPayrollToPlatformAdminsWithoutPayrollPermission() {
         UUID tenantId = UUID.randomUUID();
         JwtAuthGatewayFilter filter = new JwtAuthGatewayFilter(token ->
             new VerifiedIdentity("platform-admin", null, "SUPER_ADMIN", "")
@@ -226,6 +226,7 @@ class JwtFilterTest {
             return Mono.empty();
         }).block();
 
-        assertEquals(tenantId.toString(), forwarded.get().getRequest().getHeaders().getFirst("X-Tenant-Id"));
+        assertEquals(HttpStatus.FORBIDDEN, exchange.getResponse().getStatusCode());
+        assertNull(forwarded.get());
     }
 }
