@@ -138,7 +138,8 @@ export default function RegistrationSettingsPage() {
 
   const readSettings = useCallback(async () => {
     const response = await api.get('/api/v1/admin/registration/settings');
-    const responseRevision = Number(String(response.headers.etag ?? '').replaceAll('"', ''));
+    const etag = response.headers.etag;
+    const responseRevision = etag ? Number(String(etag).replaceAll('"', '')) : Number.NaN;
     if (!Number.isSafeInteger(responseRevision) || responseRevision < 0) {
       throw new Error('The server did not return a valid settings revision');
     }
@@ -212,7 +213,8 @@ export default function RegistrationSettingsPage() {
       const res = await api.put('/api/v1/admin/registration/settings', settings, {
         headers: { 'If-Match': String(revision) },
       });
-      const savedRevision = Number(String(res.headers.etag ?? '').replaceAll('"', ''));
+      const savedEtag = res.headers.etag;
+      const savedRevision = savedEtag ? Number(String(savedEtag).replaceAll('"', '')) : Number.NaN;
       if (!Number.isSafeInteger(savedRevision) || savedRevision < 0) {
         throw new Error('The server saved the settings but did not return a valid revision. Reload before editing again.');
       }
@@ -242,6 +244,10 @@ export default function RegistrationSettingsPage() {
 
   const reset = () => {
     if (!window.confirm('Discard unsaved changes?')) return;
+    if (hasRemoteChanges) {
+      void reloadServerSettings();
+      return;
+    }
     setSettings(savedSettings);
   };
 
