@@ -19,8 +19,9 @@ export function RoleGate({
   const location = useLocation();
   const selectedTenantId = useTenantContextStore((s) => s.selectedTenantId);
   const selectedForUid = useTenantContextStore((s) => s.selectedForUid);
+  // Tenant selection is required only for tenant data and tenant-scoped admin
+  // tools. Platform administration pages must remain reachable without it.
   const tenantScopedPath = [
-    '/dashboard',
     '/patients',
     '/providers',
     '/appointments',
@@ -31,9 +32,6 @@ export function RoleGate({
     '/payments',
     '/admin/health',
     '/admin/super/health',
-    '/admin/super/audit',
-    '/admin/super/activity',
-    '/admin/super/revenue',
   ].some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
   if (!role || !allow.includes(role)) {
     return <>{fallback ?? <Navigate to="/not-found" replace />}</>;
