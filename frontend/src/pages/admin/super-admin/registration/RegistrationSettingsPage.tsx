@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Settings,
   Save,
@@ -31,6 +31,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/lib/api-client';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -108,11 +109,6 @@ const DEFAULT_SETTINGS: RegistrationSettings = {
   forcePasswordResetOnFirstLogin: true,
 };
 
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${localStorage.getItem('firebaseToken') ?? ''}`,
-});
-
 // ─────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────
@@ -123,6 +119,10 @@ export default function RegistrationSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [hasRemoteChanges, setHasRemoteChanges] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const dirtyRef = useRef(false);
+  const revisionRef = useRef(0);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [newDomain, setNewDomain] = useState('');
@@ -133,6 +133,35 @@ export default function RegistrationSettingsPage() {
   >('signup');
 
   const dirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  dirtyRef.current = dirty;
+  revisionRef.current = revision;
+
+  const readSettings = useCallback(async () => {
+    const response = await api.get('/api/v1/admin/registration/settings');
+    const responseRevision = Number(String(response.headers.etag ?? '').replaceAll('"', ''));
+    if (!Number.isSafeInteger(responseRevision) || responseRevision < 0) {
+      throw new Error('The server did not return a valid settings revision');
+    }
+    const body = response.data;
+    return {
+      settings: { ...DEFAULT_SETTINGS, ...(body.data ?? body) } as RegistrationSettings,
+      revision: responseRevision,
+    };
+  }, []);
+
+  const refreshSettings = useCallback(async (force = false) => {
+    const remote = await readSettings();
+    setLastSyncedAt(new Date());
+    if (!force && dirtyRef.current) {
+      if (remote.revision !== revisionRef.current) setHasRemoteChanges(true);
+      return;
+    }
+    setRevision(remote.revision);
+    setSavedSettings(remote.settings);
+    setSettings(remote.settings);
+    setHasRemoteChanges(false);
+    setError(null);
+  }, [readSettings]);
 
   // ───────────────────────────────────────────────
   // Load settings
@@ -142,23 +171,12 @@ export default function RegistrationSettingsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [settingsRes, tenantsRes] = await Promise.all([
-          fetch('/api/v1/admin/registration/settings', { headers: authHeaders() }),
-          fetch('/api/v1/admin/tenants?size=200&status=ACTIVE', {
-            headers: authHeaders(),
-          }),
+        const [, tenantsRes] = await Promise.all([
+          refreshSettings(true),
+          api.get('/api/v1/admin/tenants', { params: { size: 200, status: 'ACTIVE' } }),
         ]);
-        if (settingsRes.ok) {
-          setRevision(Number(String(settingsRes.headers.get('ETag') ?? '0').replaceAll('"', '')));
-          const response = await settingsRes.json();
-          const data = response.data ?? response;
-          setSettings({ ...DEFAULT_SETTINGS, ...data });
-          setSavedSettings({ ...DEFAULT_SETTINGS, ...data });
-        }
-        if (tenantsRes.ok) {
-          const tData = await tenantsRes.json();
-          setTenants(tData.data?.content ?? tData.content ?? []);
-        }
+        const tData = tenantsRes.data;
+        setTenants(tData.data?.content ?? tData.content ?? []);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load settings');
       } finally {
@@ -166,7 +184,23 @@ export default function RegistrationSettingsPage() {
       }
     };
     load();
-  }, []);
+  }, [refreshSettings]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const poll = () => {
+      void refreshSettings().catch(() => setError('Could not refresh settings. Your current values are preserved.'));
+    };
+    const interval = window.setInterval(poll, 30_000);
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [isLoading, refreshSettings]);
 
   // ───────────────────────────────────────────────
   // Save
@@ -175,22 +209,32 @@ export default function RegistrationSettingsPage() {
     setIsSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/v1/admin/registration/settings', {
-        method: 'PUT',
-        headers: { ...authHeaders(), 'If-Match': String(revision) },
-        body: JSON.stringify(settings),
+      const res = await api.put('/api/v1/admin/registration/settings', settings, {
+        headers: { 'If-Match': String(revision) },
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Save failed');
+      const savedRevision = Number(String(res.headers.etag ?? '').replaceAll('"', ''));
+      if (!Number.isSafeInteger(savedRevision) || savedRevision < 0) {
+        throw new Error('The server saved the settings but did not return a valid revision. Reload before editing again.');
       }
-      setRevision(Number(String(res.headers.get('ETag') ?? String(revision + 1)).replaceAll('"', '')));
-      setSavedSettings(settings);
+      setRevision(savedRevision);
+      setSavedSettings({ ...settings });
+      setHasRemoteChanges(false);
+      setLastSyncedAt(new Date());
       toast.success('Registration settings saved');
     } catch (e) {
+      const status = typeof e === 'object' && e !== null && 'response' in e
+        ? (e as { response?: { status?: number } }).response?.status
+        : undefined;
+      if (status === 409 || status === 412) {
+        setHasRemoteChanges(true);
+        setError('Another administrator saved newer settings. Reload the server values to compare before saving.');
+      }
       const msg = e instanceof Error ? e.message : 'Save failed';
-      setError(msg);
-      toast.error(msg);
+      const displayedMessage = status === 409 || status === 412
+        ? 'Another administrator saved newer settings. Reload the server values to compare before saving.'
+        : msg;
+      setError(displayedMessage);
+      toast.error(displayedMessage);
     } finally {
       setIsSaving(false);
     }
@@ -199,6 +243,15 @@ export default function RegistrationSettingsPage() {
   const reset = () => {
     if (!window.confirm('Discard unsaved changes?')) return;
     setSettings(savedSettings);
+  };
+
+  const reloadServerSettings = async () => {
+    try {
+      await refreshSettings(true);
+      toast.success('Latest registration settings loaded');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not reload registration settings');
+    }
   };
 
   const update = <K extends keyof RegistrationSettings>(
@@ -231,6 +284,7 @@ export default function RegistrationSettingsPage() {
             </h1>
             <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">
               Global control over public sign-up, request approvals and provisioning defaults.
+              {lastSyncedAt && <span className="ml-2 text-xs">Synced {lastSyncedAt.toLocaleTimeString()}</span>}
             </p>
           </div>
           <div className="flex gap-2">
@@ -258,6 +312,22 @@ export default function RegistrationSettingsPage() {
           </div>
         </div>
       </div>
+
+      {hasRemoteChanges && (
+        <div role="alert" className="max-w-6xl mx-auto px-6 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+            <p>Newer registration settings are available. Your unsaved edits are preserved.</p>
+            <button
+              type="button"
+              onClick={reloadServerSettings}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-400 px-3 py-1.5 font-medium hover:bg-amber-100 dark:hover:bg-amber-900"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Reload server values
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (
